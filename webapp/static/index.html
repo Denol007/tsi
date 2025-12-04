@@ -546,6 +546,299 @@
             color: var(--tg-theme-hint-color);
             margin-top: 6px;
         }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            color: var(--tg-theme-hint-color);
+            margin-bottom: 6px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            color: var(--tg-theme-text-color);
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+        }
+
+        .form-input::placeholder {
+            color: var(--tg-theme-hint-color);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            color: var(--tg-theme-text-color);
+            font-size: 15px;
+            outline: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a0a0a0' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+        }
+
+        .form-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            color: var(--tg-theme-text-color);
+            font-size: 15px;
+            outline: none;
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+        }
+
+        .form-textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, var(--accent) 0%, #6366f1 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        /* Settings items */
+        .settings-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            gap: 12px;
+            border-bottom: 1px solid var(--card-border);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .settings-item:active {
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        .settings-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(139, 92, 246, 0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .settings-icon.danger {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .settings-content {
+            flex: 1;
+        }
+
+        .settings-title {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .settings-subtitle {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .settings-arrow {
+            color: var(--tg-theme-hint-color);
+            font-size: 18px;
+        }
+
+        /* Add button floating */
+        .fab {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--accent) 0%, #6366f1 100%);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+            z-index: 50;
+        }
+
+        .fab:active {
+            transform: scale(0.95);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: flex-end;
+            z-index: 200;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            width: 100%;
+            background: var(--tg-theme-bg-color);
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            background: var(--card-bg);
+            border: none;
+            border-radius: 50%;
+            color: var(--tg-theme-text-color);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Login status */
+        .login-status {
+            padding: 16px;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .login-status.not-logged {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .login-status-icon {
+            font-size: 24px;
+        }
+
+        .login-status-text {
+            flex: 1;
+        }
+
+        .login-status-title {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .login-status-subtitle {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        /* Delete button on items */
+        .item-delete {
+            width: 32px;
+            height: 32px;
+            background: rgba(239, 68, 68, 0.2);
+            border: none;
+            border-radius: 8px;
+            color: #ef4444;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* Back button in header for sub-pages */
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .page-settings .back-btn {
+            display: flex;
+        }
     </style>
 </head>
 <body>
@@ -658,10 +951,11 @@
             <div class="schedule-card" id="notes-list">
                 <div class="empty-state">
                     <div class="empty-icon">📝</div>
-                    <div class="empty-text">Напиши боту чтобы сохранить заметку</div>
+                    <div class="empty-text">Нажми + чтобы создать заметку</div>
                 </div>
             </div>
         </div>
+        <button class="fab" onclick="showAddNoteModal()">+</button>
     </div>
 
     <!-- Reminders Page -->
@@ -673,9 +967,159 @@
             <div class="schedule-card" id="reminders-list">
                 <div class="empty-state">
                     <div class="empty-icon">⏰</div>
-                    <div class="empty-text">Напиши "напомни через час..."</div>
+                    <div class="empty-text">Нажми + чтобы создать напоминание</div>
                 </div>
             </div>
+        </div>
+        <button class="fab" onclick="showAddReminderModal()">+</button>
+    </div>
+
+    <!-- Settings Page -->
+    <div id="page-settings" class="page page-settings">
+        <div class="section">
+            <div class="section-header">
+                <span class="section-title">👤 Аккаунт TSI</span>
+            </div>
+            <div class="schedule-card">
+                <div class="login-status not-logged" id="login-status">
+                    <div class="login-status-icon">🔒</div>
+                    <div class="login-status-text">
+                        <div class="login-status-title" id="login-status-title">Не авторизован</div>
+                        <div class="login-status-subtitle" id="login-status-subtitle">Войди для просмотра расписания</div>
+                    </div>
+                </div>
+                <div class="settings-item" onclick="showLoginModal()" id="login-btn">
+                    <div class="settings-icon">🔑</div>
+                    <div class="settings-content">
+                        <div class="settings-title">Войти в TSI</div>
+                        <div class="settings-subtitle">Используй данные студенческого портала</div>
+                    </div>
+                    <span class="settings-arrow">→</span>
+                </div>
+                <div class="settings-item" onclick="logout()" id="logout-btn" style="display: none;">
+                    <div class="settings-icon danger">🚪</div>
+                    <div class="settings-content">
+                        <div class="settings-title" style="color: #ef4444;">Выйти</div>
+                        <div class="settings-subtitle">Удалить сохранённые данные</div>
+                    </div>
+                    <span class="settings-arrow">→</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <span class="section-title">🎓 Группа</span>
+            </div>
+            <div class="schedule-card">
+                <div class="settings-item" onclick="showGroupModal()">
+                    <div class="settings-icon">👥</div>
+                    <div class="settings-content">
+                        <div class="settings-title">Выбрать группу</div>
+                        <div class="settings-subtitle" id="current-group">Не выбрана</div>
+                    </div>
+                    <span class="settings-arrow">→</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <span class="section-title">ℹ️ О приложении</span>
+            </div>
+            <div class="schedule-card">
+                <div class="settings-item">
+                    <div class="settings-icon">📱</div>
+                    <div class="settings-content">
+                        <div class="settings-title">Smart Campus Assistant</div>
+                        <div class="settings-subtitle">Версия 2.0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="login-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">🔑 Вход в TSI</span>
+                <button class="modal-close" onclick="closeModal('login-modal')">×</button>
+            </div>
+            <form onsubmit="submitLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">Логин (st...)</label>
+                    <input type="text" class="form-input" id="login-username" placeholder="stXXXXXX" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" class="form-input" id="login-password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn" id="login-submit">Войти</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Group Modal -->
+    <div class="modal-overlay" id="group-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">🎓 Выбор группы</span>
+                <button class="modal-close" onclick="closeModal('group-modal')">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Группа</label>
+                <select class="form-select" id="group-select">
+                    <option value="">Загрузка...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Или введи код вручную</label>
+                <input type="text" class="form-input" id="group-input" placeholder="3401BNA">
+            </div>
+            <button class="btn" onclick="saveGroup()">Сохранить</button>
+        </div>
+    </div>
+
+    <!-- Add Note Modal -->
+    <div class="modal-overlay" id="note-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">📝 Новая заметка</span>
+                <button class="modal-close" onclick="closeModal('note-modal')">×</button>
+            </div>
+            <form onsubmit="submitNote(event)">
+                <div class="form-group">
+                    <label class="form-label">Заголовок (необязательно)</label>
+                    <input type="text" class="form-input" id="note-title" placeholder="Название заметки">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Текст</label>
+                    <textarea class="form-textarea" id="note-content" placeholder="Текст заметки..." required></textarea>
+                </div>
+                <button type="submit" class="btn">Сохранить</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Reminder Modal -->
+    <div class="modal-overlay" id="reminder-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">⏰ Новое напоминание</span>
+                <button class="modal-close" onclick="closeModal('reminder-modal')">×</button>
+            </div>
+            <form onsubmit="submitReminder(event)">
+                <div class="form-group">
+                    <label class="form-label">Текст напоминания</label>
+                    <input type="text" class="form-input" id="reminder-text" placeholder="О чём напомнить?" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Дата и время</label>
+                    <input type="datetime-local" class="form-input" id="reminder-datetime" required>
+                </div>
+                <button type="submit" class="btn">Создать</button>
+            </form>
         </div>
     </div>
 
@@ -693,9 +1137,9 @@
             <span class="nav-icon">📝</span>
             <span>Заметки</span>
         </button>
-        <button class="nav-item" onclick="navigate('reminders')">
-            <span class="nav-icon">⏰</span>
-            <span>Напоминания</span>
+        <button class="nav-item" onclick="navigate('settings')">
+            <span class="nav-icon">⚙️</span>
+            <span>Настройки</span>
         </button>
     </div>
 
@@ -715,6 +1159,9 @@
 
         // User data
         const user = tg.initDataUnsafe?.user;
+        let isLoggedIn = false;
+        let currentGroup = null;
+
         if (user) {
             document.getElementById('user-name').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
             document.getElementById('user-avatar').textContent = user.first_name.charAt(0).toUpperCase();
@@ -723,28 +1170,52 @@
         // API base URL
         const API_BASE = '/api';
 
-        // Load initial data
+        // =============== Data Loading ===============
         async function loadData() {
             try {
-                // Load user info
                 const userResp = await fetch(`${API_BASE}/user?` + new URLSearchParams({
                     init_data: tg.initData
                 }));
                 if (userResp.ok) {
                     const userData = await userResp.json();
+                    isLoggedIn = userData.is_logged_in;
+                    currentGroup = userData.group_code;
+                    
                     if (userData.group_code) {
                         document.getElementById('user-group').textContent = `Группа: ${userData.group_code}`;
+                        document.getElementById('current-group').textContent = userData.group_code;
                     }
+                    
+                    updateLoginStatus(userData);
                 }
 
-                // Load today's schedule
                 loadTodaySchedule();
-                
-                // Load reminders
                 loadReminders();
                 
             } catch (error) {
                 console.error('Failed to load data:', error);
+            }
+        }
+
+        function updateLoginStatus(userData) {
+            const statusEl = document.getElementById('login-status');
+            const titleEl = document.getElementById('login-status-title');
+            const subtitleEl = document.getElementById('login-status-subtitle');
+            const loginBtn = document.getElementById('login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            
+            if (userData.is_logged_in) {
+                statusEl.classList.remove('not-logged');
+                titleEl.textContent = `✓ ${userData.username || 'Авторизован'}`;
+                subtitleEl.textContent = 'Аккаунт TSI подключён';
+                loginBtn.style.display = 'none';
+                logoutBtn.style.display = 'flex';
+            } else {
+                statusEl.classList.add('not-logged');
+                titleEl.textContent = 'Не авторизован';
+                subtitleEl.textContent = 'Войди для просмотра расписания';
+                loginBtn.style.display = 'flex';
+                logoutBtn.style.display = 'none';
             }
         }
 
@@ -784,7 +1255,7 @@
                     container.innerHTML = `
                         <div class="empty-state">
                             <div class="empty-icon">🔐</div>
-                            <div class="empty-text">Войди в аккаунт через бота</div>
+                            <div class="empty-text">Войди в аккаунт в настройках</div>
                         </div>
                     `;
                 }
@@ -819,41 +1290,26 @@
             }
         }
 
-        // Navigation
+        // =============== Navigation ===============
         function navigate(page) {
-            // Hide all pages
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             
-            // Show selected page
             document.getElementById('page-' + page).classList.add('active');
-            event.target.closest('.nav-item').classList.add('active');
+            event?.target?.closest('.nav-item')?.classList.add('active');
             
-            // Load page data
-            if (page === 'schedule') {
-                loadSchedule('today');
-            } else if (page === 'notes') {
-                loadNotes();
-            } else if (page === 'reminders') {
-                loadAllReminders();
-            }
+            if (page === 'schedule') loadSchedule('today');
+            else if (page === 'notes') loadNotes();
+            else if (page === 'reminders') loadAllReminders();
+            else if (page === 'settings') loadGroups();
         }
 
-        function showSchedule() {
-            navigate('schedule');
-            document.querySelectorAll('.nav-item')[1].classList.add('active');
-            document.querySelectorAll('.nav-item')[0].classList.remove('active');
-        }
+        function showSchedule() { navigate('schedule'); }
+        function showNotes() { navigate('notes'); }
+        function showReminders() { navigate('reminders'); }
+        function showSettings() { navigate('settings'); }
 
-        function showNotes() {
-            navigate('notes');
-        }
-
-        function showReminders() {
-            navigate('reminders');
-        }
-
-        // Track current period for refresh
+        // =============== Schedule ===============
         let currentPeriod = 'today';
 
         async function refreshSchedule() {
@@ -861,17 +1317,12 @@
             btn.classList.add('spinning');
             
             try {
-                // Call refresh endpoint to clear cache
                 await fetch(`${API_BASE}/schedule/refresh`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ init_data: tg.initData })
                 });
-                
-                // Reload current schedule
                 await loadSchedule(currentPeriod, true);
-                
-                // Show feedback
                 tg.showPopup({ message: 'Расписание обновлено!' });
             } catch (error) {
                 console.error('Refresh failed:', error);
@@ -883,7 +1334,6 @@
         async function loadSchedule(period, skipTabUpdate = false) {
             currentPeriod = period;
             
-            // Update tabs
             if (!skipTabUpdate) {
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 event?.target?.classList.add('active');
@@ -900,11 +1350,9 @@
                 if (resp.ok) {
                     const data = await resp.json();
                     if (data.schedule && data.schedule.length > 0) {
-                        // Check if week view (has dates)
                         const isWeekView = period === 'week';
                         
                         if (isWeekView) {
-                            // Group by date
                             const grouped = {};
                             const dayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
                             
@@ -916,7 +1364,6 @@
                             
                             let html = '';
                             Object.keys(grouped).sort().forEach(date => {
-                                // Parse date to get day name
                                 let dayName = '';
                                 try {
                                     const [day, month] = date.split('.');
@@ -948,7 +1395,6 @@
                             });
                             container.innerHTML = html;
                         } else {
-                            // Today/Tomorrow view - no date grouping needed
                             container.innerHTML = data.schedule.map(item => `
                                 <div class="schedule-item ${item.is_current ? 'current' : ''}">
                                     <div class="schedule-time">
@@ -978,6 +1424,7 @@
             }
         }
 
+        // =============== Notes ===============
         async function loadNotes() {
             const container = document.getElementById('notes-list');
             container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
@@ -991,17 +1438,19 @@
                     const data = await resp.json();
                     if (data.notes && data.notes.length > 0) {
                         container.innerHTML = data.notes.map(n => `
-                            <div class="note-item">
-                                <div class="note-title">${n.title || 'Заметка'}</div>
-                                <div class="note-preview">${n.content}</div>
-                                <div class="note-date">${n.created_at}</div>
+                            <div class="reminder-item">
+                                <div class="reminder-content" style="flex:1">
+                                    <div class="reminder-text">${n.title || 'Заметка'}</div>
+                                    <div class="reminder-time">${n.content}</div>
+                                </div>
+                                <button class="item-delete" onclick="deleteNote(${n.id})">🗑</button>
                             </div>
                         `).join('');
                     } else {
                         container.innerHTML = `
                             <div class="empty-state">
                                 <div class="empty-icon">📝</div>
-                                <div class="empty-text">Напиши боту "Запиши: ..."</div>
+                                <div class="empty-text">Нажми + чтобы создать заметку</div>
                             </div>
                         `;
                     }
@@ -1011,6 +1460,52 @@
             }
         }
 
+        function showAddNoteModal() {
+            document.getElementById('note-title').value = '';
+            document.getElementById('note-content').value = '';
+            document.getElementById('note-modal').classList.add('active');
+        }
+
+        async function submitNote(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('note-title').value.trim();
+            const content = document.getElementById('note-content').value.trim();
+            
+            try {
+                const resp = await fetch(`${API_BASE}/notes?` + new URLSearchParams({ init_data: tg.initData }), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content })
+                });
+                
+                if (resp.ok) {
+                    closeModal('note-modal');
+                    loadNotes();
+                    tg.showPopup({ message: '✅ Заметка сохранена!' });
+                } else {
+                    const data = await resp.json();
+                    tg.showAlert(data.error || 'Ошибка');
+                }
+            } catch (error) {
+                tg.showAlert('Ошибка сохранения');
+            }
+        }
+
+        async function deleteNote(id) {
+            if (!confirm('Удалить заметку?')) return;
+            
+            try {
+                await fetch(`${API_BASE}/notes/${id}?` + new URLSearchParams({ init_data: tg.initData }), {
+                    method: 'DELETE'
+                });
+                loadNotes();
+            } catch (error) {
+                tg.showAlert('Ошибка удаления');
+            }
+        }
+
+        // =============== Reminders ===============
         async function loadAllReminders() {
             const container = document.getElementById('reminders-list');
             container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
@@ -1030,13 +1525,14 @@
                                     <div class="reminder-text">${r.text}</div>
                                     <div class="reminder-time">${r.remind_at}</div>
                                 </div>
+                                <button class="item-delete" onclick="deleteReminder(${r.id})">🗑</button>
                             </div>
                         `).join('');
                     } else {
                         container.innerHTML = `
                             <div class="empty-state">
                                 <div class="empty-icon">⏰</div>
-                                <div class="empty-text">Напиши боту "Напомни через час..."</div>
+                                <div class="empty-text">Нажми + чтобы создать напоминание</div>
                             </div>
                         `;
                     }
@@ -1046,22 +1542,188 @@
             }
         }
 
+        function showAddReminderModal() {
+            document.getElementById('reminder-text').value = '';
+            // Set default datetime to 1 hour from now
+            const now = new Date();
+            now.setHours(now.getHours() + 1);
+            document.getElementById('reminder-datetime').value = now.toISOString().slice(0, 16);
+            document.getElementById('reminder-modal').classList.add('active');
+        }
+
+        async function submitReminder(e) {
+            e.preventDefault();
+            
+            const text = document.getElementById('reminder-text').value.trim();
+            const remind_at = document.getElementById('reminder-datetime').value;
+            
+            try {
+                const resp = await fetch(`${API_BASE}/reminders?` + new URLSearchParams({ init_data: tg.initData }), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, remind_at })
+                });
+                
+                if (resp.ok) {
+                    closeModal('reminder-modal');
+                    loadAllReminders();
+                    loadReminders();
+                    tg.showPopup({ message: '✅ Напоминание создано!' });
+                } else {
+                    const data = await resp.json();
+                    tg.showAlert(data.error || 'Ошибка');
+                }
+            } catch (error) {
+                tg.showAlert('Ошибка создания');
+            }
+        }
+
+        async function deleteReminder(id) {
+            if (!confirm('Удалить напоминание?')) return;
+            
+            try {
+                await fetch(`${API_BASE}/reminders/${id}?` + new URLSearchParams({ init_data: tg.initData }), {
+                    method: 'DELETE'
+                });
+                loadAllReminders();
+                loadReminders();
+            } catch (error) {
+                tg.showAlert('Ошибка удаления');
+            }
+        }
+
+        // =============== Login/Settings ===============
+        function showLoginModal() {
+            document.getElementById('login-username').value = '';
+            document.getElementById('login-password').value = '';
+            document.getElementById('login-modal').classList.add('active');
+        }
+
+        async function submitLogin(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('login-submit');
+            btn.disabled = true;
+            btn.textContent = 'Входим...';
+            
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                const resp = await fetch(`${API_BASE}/login?` + new URLSearchParams({ init_data: tg.initData }), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await resp.json();
+                
+                if (data.success) {
+                    closeModal('login-modal');
+                    isLoggedIn = true;
+                    updateLoginStatus({ is_logged_in: true, username });
+                    tg.showPopup({ message: '✅ Вход выполнен!' });
+                    loadData();
+                } else {
+                    tg.showAlert(data.error || 'Ошибка входа');
+                }
+            } catch (error) {
+                tg.showAlert('Ошибка подключения');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Войти';
+            }
+        }
+
+        async function logout() {
+            if (!confirm('Выйти из аккаунта TSI?')) return;
+            
+            try {
+                await fetch(`${API_BASE}/logout?` + new URLSearchParams({ init_data: tg.initData }), {
+                    method: 'POST'
+                });
+                isLoggedIn = false;
+                updateLoginStatus({ is_logged_in: false });
+                tg.showPopup({ message: 'Вы вышли из аккаунта' });
+            } catch (error) {
+                tg.showAlert('Ошибка');
+            }
+        }
+
+        // =============== Groups ===============
+        async function loadGroups() {
+            try {
+                const resp = await fetch(`${API_BASE}/groups?` + new URLSearchParams({ init_data: tg.initData }));
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const select = document.getElementById('group-select');
+                    select.innerHTML = '<option value="">Выбери группу...</option>' + 
+                        data.groups.map(g => `<option value="${g.code}" ${g.code === currentGroup ? 'selected' : ''}>${g.name}</option>`).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load groups:', error);
+            }
+        }
+
+        function showGroupModal() {
+            loadGroups();
+            document.getElementById('group-input').value = currentGroup || '';
+            document.getElementById('group-modal').classList.add('active');
+        }
+
+        async function saveGroup() {
+            const selectValue = document.getElementById('group-select').value;
+            const inputValue = document.getElementById('group-input').value.trim().toUpperCase();
+            const groupCode = inputValue || selectValue;
+            
+            if (!groupCode) {
+                tg.showAlert('Выбери или введи группу');
+                return;
+            }
+            
+            try {
+                const resp = await fetch(`${API_BASE}/group?` + new URLSearchParams({ init_data: tg.initData }), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ group_code: groupCode })
+                });
+                
+                if (resp.ok) {
+                    closeModal('group-modal');
+                    currentGroup = groupCode;
+                    document.getElementById('user-group').textContent = `Группа: ${groupCode}`;
+                    document.getElementById('current-group').textContent = groupCode;
+                    tg.showPopup({ message: `✅ Группа: ${groupCode}` });
+                } else {
+                    const data = await resp.json();
+                    tg.showAlert(data.error || 'Ошибка');
+                }
+            } catch (error) {
+                tg.showAlert('Ошибка сохранения');
+            }
+        }
+
+        // =============== Modals ===============
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        // Close modal on overlay click
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    overlay.classList.remove('active');
+                }
+            });
+        });
+
         function askAI() {
-            // Send message to bot
             tg.sendData(JSON.stringify({ action: 'open_ai_chat' }));
             tg.close();
         }
 
         function showNotifications() {
-            tg.showAlert('🔔 Уведомления настраиваются через бота');
-        }
-
-        function showSettings() {
-            tg.showPopup({
-                title: '⚙️ Настройки',
-                message: 'Настройки доступны через команды бота:\n/setgroup - сменить группу\n/logout - выйти из аккаунта',
-                buttons: [{ type: 'close' }]
-            });
+            tg.showAlert('🔔 Уведомления приходят в бот');
         }
 
         // Start loading data

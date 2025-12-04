@@ -358,6 +358,197 @@ def get_reminders():
     
     return jsonify({'reminders': formatted})
 
+# ==================== Auth & Settings ====================
+
+@app.route('/api/login', methods=['POST'])
+@require_auth
+def login_tsi():
+    """Login to TSI account"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    data = request.get_json() or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+    
+    if not username or not password:
+        return jsonify({'success': False, 'error': 'Введи логин и пароль'}), 400
+    
+    # Try to login to TSI
+    try:
+        calendar_service = CalendarService()
+        if not calendar_service.login(username, password):
+            calendar_service.close()
+            return jsonify({'success': False, 'error': 'Неверный логин или пароль'}), 401
+        calendar_service.close()
+        
+        # Save credentials
+        credentials.save_credentials(telegram_id, username, password)
+        
+        # Clear schedule cache
+        clear_user_cache(telegram_id)
+        
+        logger.info(f"User {telegram_id} logged in as {username}")
+        return jsonify({'success': True, 'username': username})
+        
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        return jsonify({'success': False, 'error': 'Ошибка подключения к TSI'}), 500
+
+@app.route('/api/logout', methods=['POST'])
+@require_auth
+def logout_tsi():
+    """Logout from TSI account"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    credentials.delete_credentials(telegram_id)
+    clear_user_cache(telegram_id)
+    
+    logger.info(f"User {telegram_id} logged out")
+    return jsonify({'success': True})
+
+@app.route('/api/groups')
+@require_auth
+def get_groups():
+    """Get list of available groups"""
+    # Common TSI groups
+    groups = [
+        {'code': '3401BDA', 'name': '3401BDA - Datorzinātnes (1. kurss)'},
+        {'code': '3401BDB', 'name': '3401BDB - Datorzinātnes (1. kurss)'},
+        {'code': '3402BDA', 'name': '3402BDA - Datorzinātnes (2. kurss)'},
+        {'code': '3402BDB', 'name': '3402BDB - Datorzinātnes (2. kurss)'},
+        {'code': '3403BDA', 'name': '3403BDA - Datorzinātnes (3. kurss)'},
+        {'code': '3403BDB', 'name': '3403BDB - Datorzinātnes (3. kurss)'},
+        {'code': '3401BNA', 'name': '3401BNA - IT (1. kurss)'},
+        {'code': '3401BNB', 'name': '3401BNB - IT (1. kurss)'},
+        {'code': '3402BNA', 'name': '3402BNA - IT (2. kurss)'},
+        {'code': '3402BNB', 'name': '3402BNB - IT (2. kurss)'},
+        {'code': '3403BNA', 'name': '3403BNA - IT (3. kurss)'},
+        {'code': '3403BNB', 'name': '3403BNB - IT (3. kurss)'},
+        {'code': '3401BEA', 'name': '3401BEA - Электроника (1. kurss)'},
+        {'code': '3402BEA', 'name': '3402BEA - Электроника (2. kurss)'},
+        {'code': '3403BEA', 'name': '3403BEA - Электроника (3. kurss)'},
+    ]
+    return jsonify({'groups': groups})
+
+@app.route('/api/group', methods=['POST'])
+@require_auth
+def set_group():
+    """Set user's group"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    data = request.get_json() or {}
+    group_code = data.get('group_code', '').strip().upper()
+    
+    if not group_code:
+        return jsonify({'success': False, 'error': 'Выбери группу'}), 400
+    
+    # Update or create user
+    db_user = db.get_user(telegram_id)
+    if db_user:
+        db.update_user(telegram_id, group_code=group_code)
+    else:
+        db.create_user(telegram_id, group_code=group_code)
+    
+    # Clear cache because group changed
+    clear_user_cache(telegram_id)
+    
+    logger.info(f"User {telegram_id} set group to {group_code}")
+    return jsonify({'success': True, 'group_code': group_code})
+
+# ==================== Notes CRUD ====================
+
+@app.route('/api/notes', methods=['POST'])
+@require_auth
+def create_note():
+    """Create a new note"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    data = request.get_json() or {}
+    content = data.get('content', '').strip()
+    title = data.get('title', '').strip() or None
+    
+    if not content:
+        return jsonify({'success': False, 'error': 'Введи текст заметки'}), 400
+    
+    note_id = db.add_note(telegram_id, content, title=title)
+    
+    logger.info(f"User {telegram_id} created note {note_id}")
+    return jsonify({'success': True, 'id': note_id})
+
+@app.route('/api/notes/<int:note_id>', methods=['DELETE'])
+@require_auth
+def delete_note(note_id):
+    """Delete a note"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    # Verify ownership and delete
+    notes = db.get_notes(telegram_id)
+    if not any(n['id'] == note_id for n in notes):
+        return jsonify({'success': False, 'error': 'Заметка не найдена'}), 404
+    
+    db.delete_note(note_id)
+    
+    logger.info(f"User {telegram_id} deleted note {note_id}")
+    return jsonify({'success': True})
+
+# ==================== Reminders CRUD ====================
+
+@app.route('/api/reminders', methods=['POST'])
+@require_auth
+def create_reminder():
+    """Create a new reminder"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    data = request.get_json() or {}
+    text = data.get('text', '').strip()
+    remind_at = data.get('remind_at', '').strip()  # Format: "YYYY-MM-DD HH:MM"
+    
+    if not text:
+        return jsonify({'success': False, 'error': 'Введи текст напоминания'}), 400
+    
+    if not remind_at:
+        return jsonify({'success': False, 'error': 'Выбери дату и время'}), 400
+    
+    try:
+        # Parse datetime
+        remind_datetime = datetime.strptime(remind_at, '%Y-%m-%dT%H:%M')
+        remind_datetime = remind_datetime.replace(tzinfo=TIMEZONE)
+        
+        # Check if in future
+        if remind_datetime <= datetime.now(TIMEZONE):
+            return jsonify({'success': False, 'error': 'Выбери время в будущем'}), 400
+        
+        reminder_id = db.add_reminder(telegram_id, text, remind_datetime)
+        
+        logger.info(f"User {telegram_id} created reminder {reminder_id}")
+        return jsonify({'success': True, 'id': reminder_id})
+        
+    except ValueError:
+        return jsonify({'success': False, 'error': 'Неверный формат даты'}), 400
+
+@app.route('/api/reminders/<int:reminder_id>', methods=['DELETE'])
+@require_auth
+def delete_reminder(reminder_id):
+    """Delete a reminder"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    # Verify ownership and delete
+    reminders = db.get_user_reminders(telegram_id, include_sent=True)
+    if not any(r['id'] == reminder_id for r in reminders):
+        return jsonify({'success': False, 'error': 'Напоминание не найдено'}), 404
+    
+    db.delete_reminder(reminder_id)
+    
+    logger.info(f"User {telegram_id} deleted reminder {reminder_id}")
+    return jsonify({'success': True})
+
 # ==================== Main ====================
 
 def create_app():
