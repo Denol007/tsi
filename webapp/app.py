@@ -526,7 +526,7 @@ def create_reminder():
         if remind_datetime <= datetime.now(TIMEZONE):
             return jsonify({'success': False, 'error': 'Выбери время в будущем'}), 400
         
-        reminder_id = db.add_reminder(telegram_id, text, remind_datetime)
+        reminder_id = db.add_text_reminder(telegram_id, text, remind_datetime)
         
         logger.info(f"User {telegram_id} created reminder {reminder_id}")
         return jsonify({'success': True, 'id': reminder_id})
