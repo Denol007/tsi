@@ -382,8 +382,8 @@ def login_tsi():
             return jsonify({'success': False, 'error': 'Неверный логин или пароль'}), 401
         calendar_service.close()
         
-        # Save credentials
-        credentials.save_credentials(telegram_id, username, password)
+        # Save credentials (use correct method name)
+        credentials.store_credentials(telegram_id, username, password)
         
         # Clear schedule cache
         clear_user_cache(telegram_id)
