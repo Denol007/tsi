@@ -1,47 +1,28 @@
 # Smart Campus Assistant - Dependencies
 
-# Core dependencies (from TTICalendarV2Python)
+# Core
 requests>=2.31.0
 beautifulsoup4>=4.12.0
 python-dateutil>=2.8.2
 pytz>=2023.3
 lxml>=4.9.3
-
-# Configuration
 python-dotenv>=1.0.0
 
-# Telegram Bot with job-queue for scheduled reminders
+# Telegram Bot
 python-telegram-bot[job-queue]>=20.0
 
-# Web App (Flask for Telegram Mini App)
+# Web App
 flask>=3.0.0
 flask-cors>=4.0.0
 
-# Web API (FastAPI) - optional for API
-fastapi>=0.100.0
-uvicorn>=0.23.0
-pydantic>=2.0.0
-
-# Security & Encryption
+# Security
 cryptography>=41.0.0
 
-# AI Providers (all optional - configure at least one)
-groq>=0.4.0          # Groq API client (free tier)
-google-generativeai>=0.3.0  # Google Gemini (free tier)
-openai>=1.0.0        # OpenAI API (paid)
-httpx>=0.25.0        # For Ollama (local, free)
+# AI Providers
+groq>=0.4.0
+google-generativeai>=0.3.0
+openai>=1.0.0
+httpx>=0.25.0
 
-# ICS Calendar Export (optional)
+# ICS Calendar
 ics>=0.7.2
-
-# Google Calendar Integration (optional)
-google-auth>=2.23.0
-google-auth-oauthlib>=1.1.0
-google-auth-httplib2>=0.1.1
-google-api-python-client>=2.100.0
-
-# Development dependencies
-pytest>=7.0.0
-pytest-asyncio>=0.21.0
-black>=23.0.0
-flake8>=6.0.0
