@@ -12,6 +12,7 @@ import random
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from collections import Counter
+from zoneinfo import ZoneInfo
 
 # Load environment variables BEFORE importing other modules
 from dotenv import load_dotenv
@@ -1291,7 +1292,14 @@ class SmartCampusBotV2:
         import re
         from datetime import datetime, timedelta
         
-        now = datetime.now()
+        # Get timezone from env or default to Europe/Riga
+        tz_name = os.getenv('TIMEZONE', 'Europe/Riga')
+        try:
+            tz = ZoneInfo(tz_name)
+        except:
+            tz = ZoneInfo('Europe/Riga')
+        
+        now = datetime.now(tz)
         reminder_time = None
         reminder_text = text
         

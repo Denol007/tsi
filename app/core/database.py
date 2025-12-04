@@ -11,9 +11,19 @@ from typing import List, Dict, Optional, Any
 from pathlib import Path
 import logging
 import os
+from zoneinfo import ZoneInfo
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def get_timezone():
+    """Get configured timezone"""
+    tz_name = os.getenv('TIMEZONE', 'Europe/Riga')
+    try:
+        return ZoneInfo(tz_name)
+    except:
+        return ZoneInfo('Europe/Riga')
 
 
 def get_data_dir() -> Path:
@@ -390,6 +400,8 @@ class Database:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             # Use LEFT JOIN and COALESCE to handle both user_id and telegram_id
+            # Use timezone-aware datetime
+            now = datetime.now(get_timezone())
             cursor.execute("""
                 SELECT r.*, 
                        COALESCE(r.telegram_id, u.telegram_id) as telegram_id,
@@ -397,7 +409,7 @@ class Database:
                 FROM reminders r
                 LEFT JOIN users u ON r.user_id = u.id
                 WHERE r.is_sent = 0 AND r.reminder_time <= ?
-            """, (datetime.now(),))
+            """, (now,))
             return [dict(row) for row in cursor.fetchall()]
     
     def mark_reminder_sent(self, reminder_id: int) -> bool:
