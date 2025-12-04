@@ -1317,24 +1317,55 @@ class SmartCampusBotV2:
         
         text_lower = reminder_text.lower()
         
-        # Pattern: "через X часов/минут"
-        through_match = re.search(r'через\s+(\d+)\s*(час|мин|hour|min)\w*', text_lower)
+        # Word to number mapping
+        word_to_num = {
+            'один': 1, 'одну': 1, 'одна': 1,
+            'два': 2, 'две': 2, 'двух': 2,
+            'три': 3, 'трёх': 3, 'трех': 3,
+            'четыре': 4, 'четырёх': 4, 'четырех': 4,
+            'пять': 5, 'пяти': 5,
+            'шесть': 6, 'шести': 6,
+            'семь': 7, 'семи': 7,
+            'восемь': 8, 'восьми': 8,
+            'девять': 9, 'девяти': 9,
+            'десять': 10, 'десяти': 10,
+            'пятнадцать': 15, 'двадцать': 20, 'тридцать': 30,
+            'полчаса': 30, 'пол часа': 30,
+        }
+        
+        # Helper function to extract number (digit or word)
+        def extract_number(match_str):
+            match_str = match_str.strip().lower()
+            if match_str.isdigit():
+                return int(match_str)
+            return word_to_num.get(match_str, None)
+        
+        # Pattern: "через X часов/минут" (X can be digit or word)
+        through_match = re.search(r'через\s+(\d+|один|одну|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|пятнадцать|двадцать|тридцать|полчаса)\s*(час|мин|hour|min)?\w*', text_lower)
         if through_match:
-            amount = int(through_match.group(1))
-            unit = through_match.group(2)
-            if 'час' in unit or 'hour' in unit:
-                reminder_time = now + timedelta(hours=amount)
-            else:
-                reminder_time = now + timedelta(minutes=amount)
-            # Remove the time part from text
-            reminder_text = re.sub(r'через\s+\d+\s*(час|мин|hour|min)\w*\s*', '', reminder_text, flags=re.IGNORECASE).strip()
+            amount = extract_number(through_match.group(1))
+            unit = through_match.group(2) or ''
+            
+            if amount:
+                # "полчаса" means 30 minutes
+                if 'полчаса' in through_match.group(1) or 'пол часа' in through_match.group(1):
+                    reminder_time = now + timedelta(minutes=30)
+                elif 'час' in unit or 'hour' in unit:
+                    reminder_time = now + timedelta(hours=amount)
+                else:
+                    # Default to minutes if unit not specified or is minutes
+                    reminder_time = now + timedelta(minutes=amount)
+                
+                # Remove the time part from text
+                reminder_text = re.sub(r'через\s+(\d+|один|одну|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|пятнадцать|двадцать|тридцать|полчаса|пол\s*часа)\s*(час|мин|hour|min)?\w*\s*', '', reminder_text, flags=re.IGNORECASE).strip()
         
         # Pattern: "через X дней"
-        days_match = re.search(r'через\s+(\d+)\s*(день|дня|дней|day)\w*', text_lower)
-        if days_match:
-            days = int(days_match.group(1))
-            reminder_time = now + timedelta(days=days)
-            reminder_text = re.sub(r'через\s+\d+\s*(день|дня|дней|day)\w*\s*', '', reminder_text, flags=re.IGNORECASE)
+        days_match = re.search(r'через\s+(\d+|один|одну|два|две|три|четыре|пять)\s*(день|дня|дней|day)\w*', text_lower)
+        if days_match and not reminder_time:
+            days = extract_number(days_match.group(1))
+            if days:
+                reminder_time = now + timedelta(days=days)
+                reminder_text = re.sub(r'через\s+(\d+|один|одну|два|две|три|четыре|пять)\s*(день|дня|дней|day)\w*\s*', '', reminder_text, flags=re.IGNORECASE)
         
         # Pattern: "завтра/послезавтра/сегодня [время]" - with/without "на"
         if 'послезавтра' in text_lower:
