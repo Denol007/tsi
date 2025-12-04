@@ -354,12 +354,20 @@ class Database:
         user = self.get_user(telegram_id)
         user_id = user['id'] if user else None
         
+        # Convert to string for SQLite (remove timezone info for consistent storage)
+        if reminder_time.tzinfo:
+            reminder_time_str = reminder_time.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            reminder_time_str = reminder_time.strftime('%Y-%m-%d %H:%M:%S')
+        
+        logger.info(f"Adding reminder for {telegram_id}: '{text}' at {reminder_time_str}")
+        
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO reminders (user_id, telegram_id, reminder_text, reminder_time)
                 VALUES (?, ?, ?, ?)
-            """, (user_id, telegram_id, text, reminder_time))
+            """, (user_id, telegram_id, text, reminder_time_str))
             conn.commit()
             return cursor.lastrowid
     
@@ -399,18 +407,33 @@ class Database:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            # Use LEFT JOIN and COALESCE to handle both user_id and telegram_id
-            # Use timezone-aware datetime
+            # Use timezone-aware time, but convert to string for SQLite comparison
             now = datetime.now(get_timezone())
+            now_str = now.strftime('%Y-%m-%d %H:%M:%S')
+            
+            logger.info(f"Checking reminders at {now_str}")
+            
+            # Use LEFT JOIN and COALESCE to handle both user_id and telegram_id
             cursor.execute("""
                 SELECT r.*, 
-                       COALESCE(r.telegram_id, u.telegram_id) as telegram_id,
+                       COALESCE(r.telegram_id, u.telegram_id) as tg_id,
                        u.username
                 FROM reminders r
                 LEFT JOIN users u ON r.user_id = u.id
                 WHERE r.is_sent = 0 AND r.reminder_time <= ?
-            """, (now,))
-            return [dict(row) for row in cursor.fetchall()]
+            """, (now_str,))
+            
+            results = []
+            for row in cursor.fetchall():
+                d = dict(row)
+                # Use tg_id which has the coalesced value
+                d['telegram_id'] = d.get('tg_id') or d.get('telegram_id')
+                results.append(d)
+            
+            if results:
+                logger.info(f"Found {len(results)} pending reminders")
+            
+            return results
     
     def mark_reminder_sent(self, reminder_id: int) -> bool:
         """Mark a reminder as sent"""

@@ -2158,21 +2158,29 @@ _Скажи "измени группу на XXXX" или "выключи уве�
         try:
             reminders = self.db.get_pending_reminders()
             
+            if reminders:
+                logger.info(f"Processing {len(reminders)} pending reminders")
+            
             for reminder in reminders:
                 telegram_id = reminder.get('telegram_id')
                 if not telegram_id:
+                    logger.warning(f"Reminder {reminder.get('id')} has no telegram_id!")
                     continue
                 
                 text = reminder.get('reminder_text') or reminder.get('event_id', 'Напоминание')
                 
+                logger.info(f"Sending reminder to {telegram_id}: {text}")
+                
                 try:
                     await context.bot.send_message(
                         chat_id=telegram_id,
-                        text=f"⏰ **Напоминание!**\n\n{text}",
+                        text=f"🔔 **Напоминание!**\n\n📝 {text}",
                         parse_mode="Markdown"
                     )
                     self.db.mark_reminder_sent(reminder['id'])
-                    logger.info(f"Sent reminder {reminder['id']} to {telegram_id}")
+                    logger.info(f"✅ Sent reminder {reminder['id']} to {telegram_id}")
+                except Exception as e:
+                    logger.error(f"❌ Failed to send reminder {reminder['id']}: {e}")
                 except Exception as e:
                     logger.error(f"Failed to send reminder: {e}")
                     
