@@ -1220,11 +1220,36 @@
         }
 
         async function loadTodaySchedule() {
+            const container = document.getElementById('today-schedule');
+            
+            // Check login and group status first
+            if (!isLoggedIn) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔐</div>
+                        <div class="empty-text">Войди в аккаунт в настройках</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            if (!currentGroup) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <div class="empty-text">Выбери группу в настройках</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Show loading
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
             try {
                 const resp = await fetch(`${API_BASE}/schedule/today?` + new URLSearchParams({
                     init_data: tg.initData
                 }));
-                const container = document.getElementById('today-schedule');
                 
                 if (resp.ok) {
                     const data = await resp.json();
@@ -1252,15 +1277,22 @@
                         `;
                     }
                 } else {
+                    const data = await resp.json();
                     container.innerHTML = `
                         <div class="empty-state">
-                            <div class="empty-icon">🔐</div>
-                            <div class="empty-text">Войди в аккаунт в настройках</div>
+                            <div class="empty-icon">⚠️</div>
+                            <div class="empty-text">${data.message || 'Ошибка загрузки'}</div>
                         </div>
                     `;
                 }
             } catch (error) {
                 console.error('Failed to load schedule:', error);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">⚠️</div>
+                        <div class="empty-text">Ошибка загрузки</div>
+                    </div>
+                `;
             }
         }
 
@@ -1340,6 +1372,28 @@
             }
             
             const container = document.getElementById('full-schedule');
+            
+            // Check login and group status first
+            if (!isLoggedIn) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔐</div>
+                        <div class="empty-text">Войди в аккаунт в настройках</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            if (!currentGroup) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <div class="empty-text">Выбери группу в настройках</div>
+                    </div>
+                `;
+                return;
+            }
+            
             container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
             
             try {
@@ -1694,6 +1748,8 @@
                     document.getElementById('user-group').textContent = `Группа: ${groupCode}`;
                     document.getElementById('current-group').textContent = groupCode;
                     tg.showPopup({ message: `✅ Группа: ${groupCode}` });
+                    // Reload schedule with new group
+                    loadTodaySchedule();
                 } else {
                     const data = await resp.json();
                     tg.showAlert(data.error || 'Ошибка');
