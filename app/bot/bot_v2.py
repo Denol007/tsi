@@ -1297,6 +1297,18 @@ class SmartCampusBotV2:
         
         text_lower = text.lower()
         
+        # FIRST: Clean up command words from beginning
+        # Remove "поставь напоминание", "напомни мне", etc.
+        clean_patterns = [
+            r'^(поставь|создай|добавь|установи)\s+(напоминани\w*|remind\w*|уведомлени\w*)\s*',
+            r'^(напомни|remind|напомнить)\s*(мне|me)?\s*',
+            r'^(напоминани\w*)\s*[:]\s*',
+        ]
+        for pattern in clean_patterns:
+            reminder_text = re.sub(pattern, '', reminder_text, flags=re.IGNORECASE).strip()
+        
+        text_lower = reminder_text.lower()
+        
         # Pattern: "через X часов/минут"
         through_match = re.search(r'через\s+(\d+)\s*(час|мин|hour|min)\w*', text_lower)
         if through_match:
@@ -1307,47 +1319,37 @@ class SmartCampusBotV2:
             else:
                 reminder_time = now + timedelta(minutes=amount)
             # Remove the time part from text
-            reminder_text = re.sub(r'через\s+\d+\s*(час|мин|hour|min)\w*\s*', '', text, flags=re.IGNORECASE).strip()
-            return reminder_time, reminder_text
+            reminder_text = re.sub(r'через\s+\d+\s*(час|мин|hour|min)\w*\s*', '', reminder_text, flags=re.IGNORECASE).strip()
         
         # Pattern: "через X дней"
         days_match = re.search(r'через\s+(\d+)\s*(день|дня|дней|day)\w*', text_lower)
         if days_match:
             days = int(days_match.group(1))
             reminder_time = now + timedelta(days=days)
-            # Look for time
-            time_match = re.search(r'(\d{1,2})[:\.](\d{2})', text)
-            if time_match:
-                hour, minute = int(time_match.group(1)), int(time_match.group(2))
-                reminder_time = reminder_time.replace(hour=hour, minute=minute, second=0, microsecond=0)
-            else:
-                reminder_time = reminder_time.replace(hour=9, minute=0, second=0, microsecond=0)
-            # Remove the time parts from text
-            reminder_text = re.sub(r'через\s+\d+\s*(день|дня|дней|day)\w*\s*', '', text, flags=re.IGNORECASE)
-            reminder_text = re.sub(r'\d{1,2}[:\.]?\d{2}\s*', '', reminder_text).strip()
-            return reminder_time, reminder_text
+            reminder_text = re.sub(r'через\s+\d+\s*(день|дня|дней|day)\w*\s*', '', reminder_text, flags=re.IGNORECASE)
         
-        # Pattern: "завтра/послезавтра [время]"
+        # Pattern: "завтра/послезавтра/сегодня [время]" - with/without "на"
         if 'послезавтра' in text_lower:
             reminder_time = now + timedelta(days=2)
-            reminder_text = text_lower.replace('послезавтра', '').strip()
+            reminder_text = re.sub(r'(на\s+)?послезавтра', '', reminder_text, flags=re.IGNORECASE).strip()
         elif 'завтра' in text_lower or 'tomorrow' in text_lower:
             reminder_time = now + timedelta(days=1)
-            reminder_text = re.sub(r'завтра|tomorrow', '', text, flags=re.IGNORECASE).strip()
+            reminder_text = re.sub(r'(на\s+)?(завтра|tomorrow)', '', reminder_text, flags=re.IGNORECASE).strip()
         elif 'сегодня' in text_lower or 'today' in text_lower:
             reminder_time = now
-            reminder_text = re.sub(r'сегодня|today', '', text, flags=re.IGNORECASE).strip()
+            reminder_text = re.sub(r'(на\s+)?(сегодня|today)', '', reminder_text, flags=re.IGNORECASE).strip()
         
-        # Look for time pattern HH:MM or HH.MM
-        time_match = re.search(r'(\d{1,2})[:\.](\d{2})', text)
+        # Look for time pattern HH:MM or HH.MM (with optional "в")
+        time_match = re.search(r'(?:в\s+)?(\d{1,2})[:\.](\d{2})', reminder_text)
         if time_match:
             hour, minute = int(time_match.group(1)), int(time_match.group(2))
             if reminder_time is None:
                 reminder_time = now
             reminder_time = reminder_time.replace(hour=hour, minute=minute, second=0, microsecond=0)
-            # Remove time from text
+            # Remove time from text (including "в")
+            reminder_text = re.sub(r'в\s+\d{1,2}[:\.]?\d{2}\s*', '', reminder_text).strip()
             reminder_text = re.sub(r'\d{1,2}[:\.]?\d{2}\s*', '', reminder_text).strip()
-        elif reminder_time is not None:
+        elif reminder_time is not None and reminder_time.date() != now.date():
             # Default to 9:00 if date specified but no time
             reminder_time = reminder_time.replace(hour=9, minute=0, second=0, microsecond=0)
         
@@ -1359,6 +1361,16 @@ class SmartCampusBotV2:
         # If time is in the past today, move to tomorrow
         if reminder_time < now:
             reminder_time += timedelta(days=1)
+        
+        # Clean up reminder_text: remove "чтобы", "что", extra prepositions at start
+        reminder_text = re.sub(r'^(чтобы|что|о том что|о том|про то что)\s+', '', reminder_text, flags=re.IGNORECASE).strip()
+        
+        # Remove leading prepositions
+        reminder_text = re.sub(r'^(у меня|о|об|про)\s+', '', reminder_text, flags=re.IGNORECASE).strip()
+        
+        # Capitalize first letter
+        if reminder_text:
+            reminder_text = reminder_text[0].upper() + reminder_text[1:] if len(reminder_text) > 1 else reminder_text.upper()
         
         return reminder_time, reminder_text.strip()
     

@@ -389,10 +389,13 @@ class Database:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
+            # Use LEFT JOIN and COALESCE to handle both user_id and telegram_id
             cursor.execute("""
-                SELECT r.*, u.telegram_id, u.username
+                SELECT r.*, 
+                       COALESCE(r.telegram_id, u.telegram_id) as telegram_id,
+                       u.username
                 FROM reminders r
-                JOIN users u ON r.user_id = u.id
+                LEFT JOIN users u ON r.user_id = u.id
                 WHERE r.is_sent = 0 AND r.reminder_time <= ?
             """, (datetime.now(),))
             return [dict(row) for row in cursor.fetchall()]
