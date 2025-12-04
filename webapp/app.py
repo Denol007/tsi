@@ -348,10 +348,19 @@ def get_reminders():
     
     formatted = []
     for r in reminders:
+        # Format reminder_time for display
+        remind_at = r.get('reminder_time', '')
+        if remind_at:
+            try:
+                dt = datetime.strptime(remind_at, '%Y-%m-%d %H:%M:%S')
+                remind_at = dt.strftime('%d.%m.%Y %H:%M')
+            except:
+                pass
+        
         formatted.append({
             'id': r['id'],
-            'text': r['text'],
-            'remind_at': r.get('remind_at', '')
+            'text': r.get('reminder_text', ''),
+            'remind_at': remind_at
         })
     
     return jsonify({'reminders': formatted})
