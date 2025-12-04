@@ -154,6 +154,7 @@ class SmartCampusBotV2:
         
         # Command handlers
         app.add_handler(CommandHandler("start", self.cmd_start))
+        app.add_handler(CommandHandler("menu", self.cmd_menu))
         app.add_handler(CommandHandler("help", self.cmd_help))
         app.add_handler(CommandHandler("today", self.cmd_today))
         app.add_handler(CommandHandler("tomorrow", self.cmd_tomorrow))
@@ -199,22 +200,13 @@ class SmartCampusBotV2:
         """Set bot commands for the menu"""
         commands = [
             BotCommand("start", "🚀 Начать работу"),
+            BotCommand("menu", "📋 Главное меню"),
             BotCommand("login", "🔐 Войти в аккаунт TSI"),
-            BotCommand("logout", "🚪 Выйти из аккаунта"),
-            BotCommand("today", "📅 Расписание на сегодня"),
-            BotCommand("tomorrow", "📅 Расписание на завтра"),
-            BotCommand("week", "📅 Расписание на неделю"),
-            BotCommand("next", "⏰ Следующая пара"),
-            BotCommand("setgroup", "👥 Установить группу"),
-            BotCommand("freerooms", "🚪 Свободные аудитории"),
-            BotCommand("stats", "📊 Статистика занятий"),
-            BotCommand("exams", "📝 Экзамены и сессия"),
-            BotCommand("where", "📍 Где аудитория?"),
-            BotCommand("weather", "☀️ Погода"),
-            BotCommand("deadlines", "🎯 Дедлайны"),
-            BotCommand("notes", "📝 Мои заметки"),
-            BotCommand("search", "🔍 Поиск"),
-            BotCommand("settings", "⚙️ Настройки"),
+            BotCommand("today", "📅 Сегодня"),
+            BotCommand("tomorrow", "📅 Завтра"),
+            BotCommand("week", "📅 Неделя"),
+            BotCommand("remind", "⏰ Напоминание"),
+            BotCommand("notes", "📝 Заметки"),
             BotCommand("help", "❓ Справка"),
         ]
         await self.application.bot.set_my_commands(commands)
@@ -422,42 +414,87 @@ class SmartCampusBotV2:
                     InlineKeyboardButton("📅 Неделя", callback_data="schedule_week")
                 ],
                 [
-                    InlineKeyboardButton("⚙️ Настройки", callback_data="settings"),
-                    InlineKeyboardButton("❓ Помощь", callback_data="help")
+                    InlineKeyboardButton("📝 Заметки", callback_data="menu_notes"),
+                    InlineKeyboardButton("⏰ Напоминания", callback_data="menu_reminders")
+                ],
+                [
+                    InlineKeyboardButton("📊 Ещё", callback_data="menu_more"),
+                    InlineKeyboardButton("⚙️ Настройки", callback_data="settings")
                 ]
             ]
             welcome_text = f"""
-👋 Привет, {user.first_name}!
+👋 **{user.first_name}**, добро пожаловать!
 
-✅ Ты авторизован как **{creds['username']}**
+✅ Аккаунт: `{creds['username']}`
+🤖 AI: активен
 
-🤖 Я **Smart Campus Assistant** с AI!
-
-Просто напиши мне вопрос, например:
-• "Что сегодня по расписанию?"
-• "Когда следующая пара?"
-• "Найди математику"
-
-Или используй кнопки ниже:
+**Быстрые команды** — кнопки ниже
+**Или просто напиши**, например:
+_"Что сегодня?" / "Напомни через час..."_
             """
         else:
             # User not logged in
             keyboard = [
                 [InlineKeyboardButton("🔐 Войти в TSI", callback_data="login")],
-                [InlineKeyboardButton("❓ Помощь", callback_data="help")]
+                [InlineKeyboardButton("❓ Что умеет бот?", callback_data="help")]
             ]
             welcome_text = f"""
-👋 Привет, {user.first_name}!
+👋 Привет, **{user.first_name}**!
 
 Я **Smart Campus Assistant** 🎓
+Твой помощник для TSI
 
-Для доступа к расписанию нужно войти в аккаунт TSI.
-
-Нажми кнопку ниже или отправь /login
+🔐 Войди, чтобы видеть расписание
             """
         
         await update.message.reply_text(
             welcome_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
+    
+    async def cmd_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Show main menu with buttons"""
+        telegram_id = update.effective_user.id
+        is_logged_in = self.credentials.has_credentials(telegram_id)
+        
+        if is_logged_in:
+            keyboard = [
+                [
+                    InlineKeyboardButton("📅 Сегодня", callback_data="schedule_today"),
+                    InlineKeyboardButton("📅 Завтра", callback_data="schedule_tomorrow")
+                ],
+                [
+                    InlineKeyboardButton("⏰ След. пара", callback_data="next_class"),
+                    InlineKeyboardButton("📅 Неделя", callback_data="schedule_week")
+                ],
+                [
+                    InlineKeyboardButton("📝 Заметки", callback_data="menu_notes"),
+                    InlineKeyboardButton("⏰ Напоминания", callback_data="menu_reminders")
+                ],
+                [
+                    InlineKeyboardButton("🎯 Дедлайны", callback_data="menu_deadlines"),
+                    InlineKeyboardButton("📊 Статистика", callback_data="menu_stats")
+                ],
+                [
+                    InlineKeyboardButton("🚪 Аудитории", callback_data="menu_rooms"),
+                    InlineKeyboardButton("☀️ Погода", callback_data="menu_weather")
+                ],
+                [
+                    InlineKeyboardButton("⚙️ Настройки", callback_data="settings"),
+                    InlineKeyboardButton("❓ Помощь", callback_data="help")
+                ]
+            ]
+            text = "📋 **Главное меню**\n\nВыбери действие:"
+        else:
+            keyboard = [
+                [InlineKeyboardButton("🔐 Войти в TSI", callback_data="login")],
+                [InlineKeyboardButton("❓ Помощь", callback_data="help")]
+            ]
+            text = "📋 **Меню**\n\n🔐 Войди для доступа к функциям"
+        
+        await update.message.reply_text(
+            text,
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
         )
@@ -1900,26 +1937,232 @@ _Скажи "измени группу на XXXX" или "выключи уве�
         elif data == "next_class":
             user = self.db.get_user(telegram_id)
             calendar = self._get_calendar_service(telegram_id)
+            keyboard = [[InlineKeyboardButton("◀️ Меню", callback_data="back_to_menu")]]
             if calendar and user and user.get('group_code'):
                 event = calendar.get_next_event(group=user['group_code'])
                 if event:
                     await query.edit_message_text(
                         f"⏰ **Следующая пара:**\n\n{self._format_single_event(event)}",
+                        reply_markup=InlineKeyboardMarkup(keyboard),
                         parse_mode="Markdown"
                     )
                 else:
-                    await query.edit_message_text("✨ Ближайших занятий нет!")
+                    await query.edit_message_text(
+                        "✨ Ближайших занятий нет!",
+                        reply_markup=InlineKeyboardMarkup(keyboard)
+                    )
             else:
-                await query.edit_message_text("⚠️ Установи группу: /setgroup")
+                await query.edit_message_text(
+                    "⚠️ Установи группу: /setgroup",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
         
         elif data == "help":
+            keyboard = [[InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]]
             await query.edit_message_text(
-                "❓ Отправь /help для полной справки."
+                "❓ **Справка**\n\n"
+                "**📅 Расписание:**\n"
+                "• Сегодня / Завтра / Неделя\n\n"
+                "**🤖 AI-помощник:**\n"
+                "Просто напиши вопрос!\n"
+                "• _\"Что сегодня?\"_\n"
+                "• _\"Напомни через час...\"_\n"
+                "• _\"Добавь заметку...\"_\n\n"
+                "**⏰ Напоминания:**\n"
+                "• _\"Напомни завтра в 10:00...\"_\n\n"
+                "**📝 Заметки:**\n"
+                "• _\"Запиши: текст\"_\n\n"
+                "/menu — главное меню",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown"
             )
         
         elif data == "settings":
+            user = self.db.get_user(telegram_id)
+            notif_status = "🔔 Вкл" if user and user.get('notifications_enabled', True) else "🔕 Выкл"
+            group = user.get('group_code', 'Не установлена') if user else 'Не установлена'
+            
+            keyboard = [
+                [InlineKeyboardButton(f"🔔 Уведомления: {notif_status}", callback_data="toggle_notifications")],
+                [InlineKeyboardButton(f"👥 Группа: {group}", callback_data="set_group")],
+                [InlineKeyboardButton("🚪 Выйти из аккаунта", callback_data="logout")],
+                [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
+            ]
             await query.edit_message_text(
-                "⚙️ Отправь /settings для настроек."
+                "⚙️ **Настройки**",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown"
+            )
+        
+        elif data == "back_to_menu":
+            # Show main menu
+            is_logged_in = self.credentials.has_credentials(telegram_id)
+            if is_logged_in:
+                keyboard = [
+                    [
+                        InlineKeyboardButton("📅 Сегодня", callback_data="schedule_today"),
+                        InlineKeyboardButton("📅 Завтра", callback_data="schedule_tomorrow")
+                    ],
+                    [
+                        InlineKeyboardButton("⏰ След. пара", callback_data="next_class"),
+                        InlineKeyboardButton("📅 Неделя", callback_data="schedule_week")
+                    ],
+                    [
+                        InlineKeyboardButton("📝 Заметки", callback_data="menu_notes"),
+                        InlineKeyboardButton("⏰ Напоминания", callback_data="menu_reminders")
+                    ],
+                    [
+                        InlineKeyboardButton("📊 Ещё", callback_data="menu_more"),
+                        InlineKeyboardButton("⚙️ Настройки", callback_data="settings")
+                    ]
+                ]
+                await query.edit_message_text(
+                    "📋 **Главное меню**",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode="Markdown"
+                )
+            else:
+                keyboard = [[InlineKeyboardButton("🔐 Войти", callback_data="login")]]
+                await query.edit_message_text(
+                    "📋 **Меню**\n\n🔐 Войди для доступа",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode="Markdown"
+                )
+        
+        elif data == "menu_notes":
+            notes = self.db.get_user_notes(telegram_id, limit=5)
+            if notes:
+                text = "📝 **Заметки:**\n\n"
+                for i, (key, value, dt) in enumerate(notes[:5], 1):
+                    text += f"{i}. {value[:50]}{'...' if len(value) > 50 else ''}\n"
+            else:
+                text = "📝 У тебя пока нет заметок"
+            
+            keyboard = [
+                [InlineKeyboardButton("➕ Добавить", callback_data="add_note_prompt")],
+                [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
+            ]
+            await query.edit_message_text(
+                text + "\n\n_Напиши: \"Запиши: текст\"_",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown"
+            )
+        
+        elif data == "menu_reminders":
+            reminders = self.db.get_user_reminders(telegram_id)
+            if reminders:
+                text = "⏰ **Напоминания:**\n\n"
+                for r in reminders[:5]:
+                    r_text = r.get('reminder_text', 'Напоминание')[:40]
+                    r_time = r.get('reminder_time', '')
+                    if isinstance(r_time, str):
+                        try:
+                            dt = datetime.strptime(r_time, '%Y-%m-%d %H:%M:%S')
+                            r_time = dt.strftime('%d.%m %H:%M')
+                        except:
+                            pass
+                    text += f"• {r_text} — _{r_time}_\n"
+            else:
+                text = "⏰ Нет активных напоминаний"
+            
+            keyboard = [
+                [InlineKeyboardButton("➕ Добавить", callback_data="add_reminder_prompt")],
+                [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
+            ]
+            await query.edit_message_text(
+                text + "\n\n_Напиши: \"Напомни через час...\"_",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown"
+            )
+        
+        elif data == "menu_more":
+            keyboard = [
+                [
+                    InlineKeyboardButton("🎯 Дедлайны", callback_data="menu_deadlines"),
+                    InlineKeyboardButton("📊 Статистика", callback_data="menu_stats")
+                ],
+                [
+                    InlineKeyboardButton("🚪 Аудитории", callback_data="menu_rooms"),
+                    InlineKeyboardButton("☀️ Погода", callback_data="menu_weather")
+                ],
+                [
+                    InlineKeyboardButton("✨ Мотивация", callback_data="motivation_more"),
+                    InlineKeyboardButton("📝 Экзамены", callback_data="menu_exams")
+                ],
+                [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
+            ]
+            await query.edit_message_text(
+                "📊 **Дополнительно**",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown"
+            )
+        
+        elif data == "menu_deadlines":
+            keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="menu_more")]]
+            await query.edit_message_text(
+                "🎯 **Дедлайны**\n\n"
+                "Добавь: `/deadline 25.12 Сдать курсовую`\n"
+                "Список: `/deadlines`",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown"
+            )
+        
+        elif data == "menu_stats":
+            keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="menu_more")]]
+            await query.edit_message_text(
+                "📊 Статистика: /stats",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown"
+            )
+        
+        elif data == "menu_rooms":
+            keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="menu_more")]]
+            await query.edit_message_text(
+                "🚪 Свободные аудитории: /freerooms\n"
+                "Где аудитория: /where [номер]",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown"
+            )
+        
+        elif data == "menu_weather":
+            keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="menu_more")]]
+            await query.edit_message_text(
+                "☀️ Погода: /weather",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown"
+            )
+        
+        elif data == "menu_exams":
+            keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="menu_more")]]
+            await query.edit_message_text(
+                "📝 Экзамены: /exams",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown"
+            )
+        
+        elif data == "add_note_prompt":
+            keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="menu_notes")]]
+            await query.edit_message_text(
+                "📝 **Добавить заметку**\n\n"
+                "Напиши:\n"
+                "`Запиши: твой текст`\n\n"
+                "или\n"
+                "`/note твой текст`",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown"
+            )
+        
+        elif data == "add_reminder_prompt":
+            keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="menu_reminders")]]
+            await query.edit_message_text(
+                "⏰ **Добавить напоминание**\n\n"
+                "Напиши:\n"
+                "• _Напомни через 2 часа..._\n"
+                "• _Напомни завтра в 10:00..._\n\n"
+                "или\n"
+                "`/remind 14:30 текст`",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown"
             )
         
         elif data == "toggle_notifications":
@@ -2112,7 +2355,12 @@ _Скажи "измени группу на XXXX" или "выключи уве�
             else:
                 response = f"{title}\n\n✨ Занятий нет!"
             
-            await query.edit_message_text(response, parse_mode="Markdown")
+            keyboard = [[InlineKeyboardButton("◀️ Меню", callback_data="back_to_menu")]]
+            await query.edit_message_text(
+                response, 
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown"
+            )
             
         except Exception as e:
             logger.error(f"Schedule callback error: {e}")
