@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 load_dotenv()
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -71,6 +71,23 @@ MOTIVATION_QUOTES = [
     "✨ Ты умнее, чем думаешь!",
     "🎓 Диплом уже ждёт тебя!",
 ]
+
+
+def get_main_keyboard(is_logged_in: bool = False) -> ReplyKeyboardMarkup:
+    """Get persistent keyboard with Menu button"""
+    if is_logged_in:
+        keyboard = [
+            [KeyboardButton("📋 Menu"), KeyboardButton("📅 Сегодня"), KeyboardButton("📅 Завтра")],
+        ]
+    else:
+        keyboard = [
+            [KeyboardButton("📋 Menu"), KeyboardButton("🔐 Войти")],
+        ]
+    return ReplyKeyboardMarkup(
+        keyboard, 
+        resize_keyboard=True,  # Компактная клавиатура
+        is_persistent=True     # Всегда видна
+    )
 
 
 class SmartCampusBotV2:
@@ -335,6 +352,13 @@ class SmartCampusBotV2:
                     f"Например: `/setgroup 3401BNA`",
                     parse_mode="Markdown"
                 )
+                
+                # Update keyboard to show logged-in buttons
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text="🎉 Готово! Используй кнопки ниже:",
+                    reply_markup=get_main_keyboard(is_logged_in=True)
+                )
             else:
                 self.credentials.record_failed_login(telegram_id)
                 await status_msg.edit_text(
@@ -368,7 +392,8 @@ class SmartCampusBotV2:
         
         await update.message.reply_text(
             "✅ Ты успешно вышел из аккаунта.\n\n"
-            "Все данные удалены. Для входа: /login"
+            "Для входа: /login",
+            reply_markup=get_main_keyboard(is_logged_in=False)
         )
     
     async def cmd_cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -447,8 +472,16 @@ _"Что сегодня?" / "Напомни через час..."_
 🔐 Войди, чтобы видеть расписание
             """
         
+        # Send with both inline keyboard and persistent reply keyboard
         await update.message.reply_text(
             welcome_text,
+            reply_markup=get_main_keyboard(is_logged_in),
+            parse_mode="Markdown"
+        )
+        
+        # Also send inline menu
+        await update.message.reply_text(
+            "👇 **Быстрые действия:**",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
         )
@@ -1482,6 +1515,20 @@ _"Что сегодня?" / "Напомни через час..."_
         """Handle natural language messages with AI"""
         text = update.message.text
         telegram_id = update.effective_user.id
+        
+        # Handle keyboard button presses
+        if text == "📋 Menu":
+            await self.cmd_menu(update, context)
+            return
+        elif text == "📅 Сегодня":
+            await self.cmd_today(update, context)
+            return
+        elif text == "📅 Завтра":
+            await self.cmd_tomorrow(update, context)
+            return
+        elif text == "🔐 Войти":
+            await self.cmd_login(update, context)
+            return
         
         # Get user context
         user = self.db.get_user(telegram_id)
