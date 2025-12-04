@@ -10,8 +10,8 @@ lxml>=4.9.3
 # Configuration
 python-dotenv>=1.0.0
 
-# Telegram Bot
-python-telegram-bot>=20.0
+# Telegram Bot with job-queue for scheduled reminders
+python-telegram-bot[job-queue]>=20.0
 
 # Web API (FastAPI)
 fastapi>=0.100.0
