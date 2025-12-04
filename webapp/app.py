@@ -6,9 +6,7 @@ import os
 import json
 import hmac
 import hashlib
-import re
-import requests
-from bs4 import BeautifulSoup
+import logging
 from urllib.parse import parse_qsl
 from datetime import datetime, timedelta
 from functools import wraps
@@ -23,6 +21,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.database import Database
 from app.core.credentials import CredentialManager
+from app.core.calendar_service import CalendarService
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__, static_folder='static')
@@ -31,88 +33,6 @@ CORS(app)
 # Services
 db = Database()
 credentials = CredentialManager()
-
-# TSI URLs
-TSI_BASE_URL = "https://mob-back.tsi.lv"
-TSI_LOGIN_PAGE = f"{TSI_BASE_URL}/login"
-TSI_AUTH_URL = f"{TSI_BASE_URL}/login"
-TSI_CALENDAR_URL = f"{TSI_BASE_URL}/calendar"
-
-
-def fetch_tsi_schedule(username: str, password: str, group_code: str, start_date, end_date):
-    """Fetch schedule directly from TSI"""
-    session = requests.Session()
-    session.headers.update({
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0) Gecko/20100101 Firefox/144.0"
-    })
-    
-    try:
-        # Get login page and CSRF token
-        resp = session.get(TSI_LOGIN_PAGE)
-        soup = BeautifulSoup(resp.text, "html.parser")
-        token_input = soup.find("input", attrs={"name": "_token"})
-        
-        if not token_input or not token_input.get("value"):
-            return []
-        
-        csrf_token = token_input["value"]
-        
-        # Login
-        login_data = {
-            "_token": (None, csrf_token),
-            "username": (None, username),
-            "password": (None, password),
-        }
-        
-        resp = session.post(TSI_AUTH_URL, files=login_data, allow_redirects=True)
-        
-        if "logout" not in resp.text.lower():
-            return []
-        
-        # Fetch calendar for the month
-        all_events = []
-        current = datetime(start_date.year, start_date.month, 1)
-        end = datetime(end_date.year, end_date.month, 1)
-        
-        while current <= end:
-            params = {
-                "view": "month",
-                "date": current.strftime("%Y-%m-01"),
-                "group": group_code,
-                "year": current.year,
-                "month": current.month
-            }
-            
-            resp = session.get(TSI_CALENDAR_URL, params=params)
-            
-            # Parse events from HTML
-            soup = BeautifulSoup(resp.text, "html.parser")
-            for script in soup.find_all("script"):
-                if script.string and "const events" in script.string:
-                    match = re.search(r'const events = (\{[^;]+\});', script.string, re.DOTALL)
-                    if match:
-                        try:
-                            events_by_date = json.loads(match.group(1))
-                            for date_str, date_events in events_by_date.items():
-                                for event in date_events:
-                                    event['date'] = date_str
-                                    all_events.append(event)
-                        except:
-                            pass
-            
-            # Next month
-            if current.month == 12:
-                current = datetime(current.year + 1, 1, 1)
-            else:
-                current = datetime(current.year, current.month + 1, 1)
-        
-        session.close()
-        return all_events
-        
-    except Exception as e:
-        print(f"TSI fetch error: {e}")
-        return []
 
 # Timezone
 TIMEZONE = ZoneInfo(os.getenv('TIMEZONE', 'Europe/Riga'))
@@ -258,54 +178,53 @@ def get_schedule(period):
         now = datetime.now(TIMEZONE)
         
         if period == 'today':
-            start_date = now.date()
-            end_date = now.date()
-            target_date_str = start_date.strftime('%Y-%m-%d')
+            target_date = now.date()
         elif period == 'tomorrow':
-            start_date = (now + timedelta(days=1)).date()
-            end_date = start_date
-            target_date_str = start_date.strftime('%Y-%m-%d')
+            target_date = (now + timedelta(days=1)).date()
         elif period == 'week':
-            start_date = now.date()
-            end_date = (now + timedelta(days=7)).date()
-            target_date_str = None  # All dates in range
+            target_date = None  # Will get all events
         else:
-            start_date = now.date()
-            end_date = now.date()
-            target_date_str = start_date.strftime('%Y-%m-%d')
+            target_date = now.date()
         
-        # Fetch directly from TSI
-        all_events = fetch_tsi_schedule(
-            creds['username'], 
-            creds['password'], 
-            group_code, 
-            start_date, 
-            end_date
-        )
+        # Use CalendarService (same as bot uses)
+        calendar_service = CalendarService()
         
-        if not all_events:
+        try:
+            if not calendar_service.login(creds['username'], creds['password']):
+                return jsonify({'schedule': [], 'message': 'Ошибка входа в TSI'})
+            
+            # Fetch events for the group
+            events = calendar_service.fetch_events(group=group_code)
+            calendar_service.close()
+            
+        except Exception as e:
+            logger.error(f"CalendarService error: {e}")
             return jsonify({'schedule': [], 'message': 'Не удалось загрузить расписание'})
         
-        # Filter events for the requested period
+        if not events:
+            return jsonify({'schedule': []})
+        
+        # Filter events by date
+        if period == 'week':
+            start_date_str = now.date().strftime('%Y-%m-%d')
+            end_date_str = (now + timedelta(days=7)).date().strftime('%Y-%m-%d')
+            filtered_events = [
+                e for e in events 
+                if start_date_str <= e.get('date', '') <= end_date_str
+            ]
+        else:
+            target_date_str = target_date.strftime('%Y-%m-%d')
+            filtered_events = [
+                e for e in events 
+                if e.get('date') == target_date_str
+            ]
+        
+        # Format events
         schedule = []
-        for event in all_events:
-            event_date = event.get('date', '')
-            
-            # Filter by date
-            if target_date_str and event_date != target_date_str:
-                continue
-            
-            # For week - check if in range
-            if not target_date_str:
-                try:
-                    ev_date = datetime.strptime(event_date, '%Y-%m-%d').date()
-                    if ev_date < start_date or ev_date > end_date:
-                        continue
-                except:
-                    continue
-            
+        for event in filtered_events:
             start_time = event.get('start_time', '')
             end_time = event.get('end_time', '')
+            event_date = event.get('date', '')
             
             # Check if current lesson
             is_current = False
@@ -316,23 +235,31 @@ def get_schedule(period):
                 except:
                     pass
             
+            # Format date for week view
+            display_date = None
+            if period == 'week' and event_date:
+                try:
+                    display_date = datetime.strptime(event_date, '%Y-%m-%d').strftime('%d.%m')
+                except:
+                    display_date = event_date
+            
             schedule.append({
                 'subject': event.get('title', event.get('name', 'Без названия')),
                 'teacher': event.get('lecturer', ''),
                 'room': event.get('room', ''),
                 'start_time': start_time,
                 'end_time': end_time,
-                'date': datetime.strptime(event_date, '%Y-%m-%d').strftime('%d.%m') if period == 'week' else None,
+                'date': display_date,
                 'is_current': is_current
             })
         
-        # Sort by time
-        schedule.sort(key=lambda x: (x.get('date', ''), x['start_time']))
+        # Sort by date and time
+        schedule.sort(key=lambda x: (x.get('date') or '', x['start_time']))
         
         return jsonify({'schedule': schedule})
         
     except Exception as e:
-        print(f"Schedule error: {e}")
+        logger.error(f"Schedule error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e), 'schedule': []}), 500
