@@ -2547,11 +2547,15 @@ _Скажи "измени группу на XXXX" или "выключи уве�
         self.application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
-if __name__ == "__main__":
-    import os
+def main():
+    """Main entry point for the bot"""
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         print("❌ TELEGRAM_BOT_TOKEN not set in .env")
         exit(1)
     bot = SmartCampusBotV2(token=token)
     bot.run()
+
+
+if __name__ == "__main__":
+    main()

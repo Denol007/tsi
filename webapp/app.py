@@ -19,7 +19,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.database import Database
-from app.core.credentials import CredentialsManager
+from app.core.credentials import CredentialManager
 from TSICalendar import TSICalendar
 
 # Initialize Flask app
@@ -28,7 +28,7 @@ CORS(app)
 
 # Services
 db = Database()
-credentials = CredentialsManager()
+credentials = CredentialManager()
 
 # Timezone
 TIMEZONE = ZoneInfo(os.getenv('TIMEZONE', 'Europe/Riga'))
