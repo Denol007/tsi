@@ -6,6 +6,9 @@ import os
 import json
 import hmac
 import hashlib
+import re
+import requests
+from bs4 import BeautifulSoup
 from urllib.parse import parse_qsl
 from datetime import datetime, timedelta
 from functools import wraps
@@ -28,6 +31,88 @@ CORS(app)
 # Services
 db = Database()
 credentials = CredentialManager()
+
+# TSI URLs
+TSI_BASE_URL = "https://mob-back.tsi.lv"
+TSI_LOGIN_PAGE = f"{TSI_BASE_URL}/login"
+TSI_AUTH_URL = f"{TSI_BASE_URL}/login"
+TSI_CALENDAR_URL = f"{TSI_BASE_URL}/calendar"
+
+
+def fetch_tsi_schedule(username: str, password: str, group_code: str, start_date, end_date):
+    """Fetch schedule directly from TSI"""
+    session = requests.Session()
+    session.headers.update({
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0) Gecko/20100101 Firefox/144.0"
+    })
+    
+    try:
+        # Get login page and CSRF token
+        resp = session.get(TSI_LOGIN_PAGE)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        token_input = soup.find("input", attrs={"name": "_token"})
+        
+        if not token_input or not token_input.get("value"):
+            return []
+        
+        csrf_token = token_input["value"]
+        
+        # Login
+        login_data = {
+            "_token": (None, csrf_token),
+            "username": (None, username),
+            "password": (None, password),
+        }
+        
+        resp = session.post(TSI_AUTH_URL, files=login_data, allow_redirects=True)
+        
+        if "logout" not in resp.text.lower():
+            return []
+        
+        # Fetch calendar for the month
+        all_events = []
+        current = datetime(start_date.year, start_date.month, 1)
+        end = datetime(end_date.year, end_date.month, 1)
+        
+        while current <= end:
+            params = {
+                "view": "month",
+                "date": current.strftime("%Y-%m-01"),
+                "group": group_code,
+                "year": current.year,
+                "month": current.month
+            }
+            
+            resp = session.get(TSI_CALENDAR_URL, params=params)
+            
+            # Parse events from HTML
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for script in soup.find_all("script"):
+                if script.string and "const events" in script.string:
+                    match = re.search(r'const events = (\{[^;]+\});', script.string, re.DOTALL)
+                    if match:
+                        try:
+                            events_by_date = json.loads(match.group(1))
+                            for date_str, date_events in events_by_date.items():
+                                for event in date_events:
+                                    event['date'] = date_str
+                                    all_events.append(event)
+                        except:
+                            pass
+            
+            # Next month
+            if current.month == 12:
+                current = datetime(current.year + 1, 1, 1)
+            else:
+                current = datetime(current.year, current.month + 1, 1)
+        
+        session.close()
+        return all_events
+        
+    except Exception as e:
+        print(f"TSI fetch error: {e}")
+        return []
 
 # Timezone
 TIMEZONE = ZoneInfo(os.getenv('TIMEZONE', 'Europe/Riga'))
@@ -159,7 +244,7 @@ def get_schedule(period):
     # Check if logged in
     creds = credentials.get_credentials(telegram_id)
     if not creds:
-        return jsonify({'error': 'Not logged in'}), 401
+        return jsonify({'error': 'Not logged in', 'schedule': []}), 401
     
     try:
         # Get user's group
@@ -167,7 +252,7 @@ def get_schedule(period):
         group_code = db_user.get('group_code') if db_user else None
         
         if not group_code:
-            return jsonify({'schedule': [], 'message': 'Group not set'})
+            return jsonify({'schedule': [], 'message': 'Установи группу: /setgroup'})
         
         # Calculate date range
         now = datetime.now(TIMEZONE)
@@ -175,74 +260,82 @@ def get_schedule(period):
         if period == 'today':
             start_date = now.date()
             end_date = now.date()
+            target_date_str = start_date.strftime('%Y-%m-%d')
         elif period == 'tomorrow':
             start_date = (now + timedelta(days=1)).date()
             end_date = start_date
+            target_date_str = start_date.strftime('%Y-%m-%d')
         elif period == 'week':
             start_date = now.date()
             end_date = (now + timedelta(days=7)).date()
+            target_date_str = None  # All dates in range
         else:
             start_date = now.date()
             end_date = now.date()
+            target_date_str = start_date.strftime('%Y-%m-%d')
         
-        # Try to get cached events from database
-        cached = db.get_cached_events(telegram_id, start_date, end_date)
+        # Fetch directly from TSI
+        all_events = fetch_tsi_schedule(
+            creds['username'], 
+            creds['password'], 
+            group_code, 
+            start_date, 
+            end_date
+        )
         
-        if cached:
-            lessons = cached
-        else:
-            # No cache - return empty with message
-            return jsonify({
-                'schedule': [],
-                'message': 'Напиши боту /today чтобы загрузить расписание'
-            })
+        if not all_events:
+            return jsonify({'schedule': [], 'message': 'Не удалось загрузить расписание'})
         
-        # Format response
+        # Filter events for the requested period
         schedule = []
-        for lesson in lessons:
-            start_time = lesson.get('start')
-            end_time = lesson.get('end')
+        for event in all_events:
+            event_date = event.get('date', '')
             
-            # Parse datetime if string
-            if isinstance(start_time, str):
-                try:
-                    start_time = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
-                except:
-                    pass
-            if isinstance(end_time, str):
-                try:
-                    end_time = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
-                except:
-                    pass
+            # Filter by date
+            if target_date_str and event_date != target_date_str:
+                continue
             
-            # Check if current
+            # For week - check if in range
+            if not target_date_str:
+                try:
+                    ev_date = datetime.strptime(event_date, '%Y-%m-%d').date()
+                    if ev_date < start_date or ev_date > end_date:
+                        continue
+                except:
+                    continue
+            
+            start_time = event.get('start_time', '')
+            end_time = event.get('end_time', '')
+            
+            # Check if current lesson
             is_current = False
-            if isinstance(start_time, datetime) and isinstance(end_time, datetime):
-                # Make timezone aware if needed
-                if start_time.tzinfo is None:
-                    start_time = start_time.replace(tzinfo=TIMEZONE)
-                if end_time.tzinfo is None:
-                    end_time = end_time.replace(tzinfo=TIMEZONE)
-                is_current = start_time <= now <= end_time
+            if period == 'today' and start_time and end_time:
+                try:
+                    now_time = now.strftime('%H:%M')
+                    is_current = start_time <= now_time <= end_time
+                except:
+                    pass
             
             schedule.append({
-                'subject': lesson.get('title', lesson.get('summary', 'Без названия')),
-                'teacher': lesson.get('teacher', ''),
-                'room': lesson.get('room', lesson.get('location', '')),
-                'start_time': start_time.strftime('%H:%M') if isinstance(start_time, datetime) else str(start_time),
-                'end_time': end_time.strftime('%H:%M') if isinstance(end_time, datetime) else str(end_time),
-                'date': start_time.strftime('%d.%m') if isinstance(start_time, datetime) and period == 'week' else None,
+                'subject': event.get('title', event.get('name', 'Без названия')),
+                'teacher': event.get('lecturer', ''),
+                'room': event.get('room', ''),
+                'start_time': start_time,
+                'end_time': end_time,
+                'date': datetime.strptime(event_date, '%Y-%m-%d').strftime('%d.%m') if period == 'week' else None,
                 'is_current': is_current
             })
         
         # Sort by time
-        schedule.sort(key=lambda x: x['start_time'])
+        schedule.sort(key=lambda x: (x.get('date', ''), x['start_time']))
         
         return jsonify({'schedule': schedule})
         
     except Exception as e:
         print(f"Schedule error: {e}")
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'schedule': []}), 500
 
 @app.route('/api/notes')
 @require_auth
