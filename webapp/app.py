@@ -7,6 +7,7 @@ import json
 import hmac
 import hashlib
 import logging
+import time
 from urllib.parse import parse_qsl
 from datetime import datetime, timedelta
 from functools import wraps
@@ -36,6 +37,37 @@ credentials = CredentialManager()
 
 # Timezone
 TIMEZONE = ZoneInfo(os.getenv('TIMEZONE', 'Europe/Riga'))
+
+# ============== Schedule Cache ==============
+# Simple in-memory cache: {user_id: {'events': [...], 'timestamp': time, 'group': group}}
+SCHEDULE_CACHE = {}
+CACHE_TTL = 300  # 5 minutes in seconds
+
+def get_cached_schedule(user_id: int, group_code: str):
+    """Get schedule from cache if valid"""
+    cache_entry = SCHEDULE_CACHE.get(user_id)
+    if cache_entry:
+        # Check if cache is still valid and group matches
+        age = time.time() - cache_entry['timestamp']
+        if age < CACHE_TTL and cache_entry.get('group') == group_code:
+            logger.info(f"Cache hit for user {user_id} (age: {age:.0f}s)")
+            return cache_entry['events']
+    return None
+
+def set_cached_schedule(user_id: int, group_code: str, events: list):
+    """Save schedule to cache"""
+    SCHEDULE_CACHE[user_id] = {
+        'events': events,
+        'timestamp': time.time(),
+        'group': group_code
+    }
+    logger.info(f"Cached {len(events)} events for user {user_id}")
+
+def clear_user_cache(user_id: int):
+    """Clear cache for specific user"""
+    if user_id in SCHEDULE_CACHE:
+        del SCHEDULE_CACHE[user_id]
+# ============================================
 
 def get_bot_token():
     """Get bot token from environment"""
@@ -186,20 +218,29 @@ def get_schedule(period):
         else:
             target_date = now.date()
         
-        # Use CalendarService (same as bot uses)
-        calendar_service = CalendarService()
+        # Try to get from cache first
+        events = get_cached_schedule(telegram_id, group_code)
         
-        try:
-            if not calendar_service.login(creds['username'], creds['password']):
-                return jsonify({'schedule': [], 'message': 'Ошибка входа в TSI'})
+        if events is None:
+            # Cache miss - fetch from TSI
+            logger.info(f"Cache miss for user {telegram_id}, fetching from TSI...")
+            calendar_service = CalendarService()
             
-            # Fetch events for the group
-            events = calendar_service.fetch_events(group=group_code)
-            calendar_service.close()
-            
-        except Exception as e:
-            logger.error(f"CalendarService error: {e}")
-            return jsonify({'schedule': [], 'message': 'Не удалось загрузить расписание'})
+            try:
+                if not calendar_service.login(creds['username'], creds['password']):
+                    return jsonify({'schedule': [], 'message': 'Ошибка входа в TSI'})
+                
+                # Fetch events for the group
+                events = calendar_service.fetch_events(group=group_code)
+                calendar_service.close()
+                
+                # Save to cache
+                if events:
+                    set_cached_schedule(telegram_id, group_code, events)
+                    
+            except Exception as e:
+                logger.error(f"CalendarService error: {e}")
+                return jsonify({'schedule': [], 'message': 'Не удалось загрузить расписание'})
         
         if not events:
             return jsonify({'schedule': []})
@@ -263,6 +304,19 @@ def get_schedule(period):
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e), 'schedule': []}), 500
+
+@app.route('/api/schedule/refresh', methods=['POST'])
+@require_auth
+def refresh_schedule():
+    """Force refresh schedule cache"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    # Clear user's cache
+    clear_user_cache(telegram_id)
+    logger.info(f"Cache cleared for user {telegram_id}")
+    
+    return jsonify({'success': True, 'message': 'Кэш очищен'})
 
 @app.route('/api/notes')
 @require_auth
