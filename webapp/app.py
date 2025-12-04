@@ -20,7 +20,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.database import Database
 from app.core.credentials import CredentialManager
-from TSICalendar import TSICalendar
 
 # Initialize Flask app
 app = Flask(__name__, static_folder='static')
@@ -163,10 +162,6 @@ def get_schedule(period):
         return jsonify({'error': 'Not logged in'}), 401
     
     try:
-        # Get calendar
-        calendar = TSICalendar()
-        calendar.login(creds['username'], creds['password'])
-        
         # Get user's group
         db_user = db.get_user(telegram_id)
         group_code = db_user.get('group_code') if db_user else None
@@ -190,12 +185,17 @@ def get_schedule(period):
             start_date = now.date()
             end_date = now.date()
         
-        # Get schedule
-        lessons = calendar.getEvents(
-            start=start_date,
-            end=end_date,
-            filter_by=group_code
-        )
+        # Try to get cached events from database
+        cached = db.get_cached_events(telegram_id, start_date, end_date)
+        
+        if cached:
+            lessons = cached
+        else:
+            # No cache - return empty with message
+            return jsonify({
+                'schedule': [],
+                'message': 'Напиши боту /today чтобы загрузить расписание'
+            })
         
         # Format response
         schedule = []
@@ -203,13 +203,27 @@ def get_schedule(period):
             start_time = lesson.get('start')
             end_time = lesson.get('end')
             
+            # Parse datetime if string
+            if isinstance(start_time, str):
+                try:
+                    start_time = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+                except:
+                    pass
+            if isinstance(end_time, str):
+                try:
+                    end_time = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+                except:
+                    pass
+            
             # Check if current
             is_current = False
-            if start_time and end_time:
-                if isinstance(start_time, datetime):
-                    lesson_start = start_time
-                    lesson_end = end_time
-                    is_current = lesson_start <= now <= lesson_end
+            if isinstance(start_time, datetime) and isinstance(end_time, datetime):
+                # Make timezone aware if needed
+                if start_time.tzinfo is None:
+                    start_time = start_time.replace(tzinfo=TIMEZONE)
+                if end_time.tzinfo is None:
+                    end_time = end_time.replace(tzinfo=TIMEZONE)
+                is_current = start_time <= now <= end_time
             
             schedule.append({
                 'subject': lesson.get('title', lesson.get('summary', 'Без названия')),
@@ -223,8 +237,6 @@ def get_schedule(period):
         
         # Sort by time
         schedule.sort(key=lambda x: x['start_time'])
-        
-        calendar.close()
         
         return jsonify({'schedule': schedule})
         
@@ -259,16 +271,16 @@ def get_reminders():
     user = request.telegram_user
     telegram_id = user['id']
     
-    reminders = db.get_reminders(telegram_id)
+    # Use correct method name
+    reminders = db.get_user_reminders(telegram_id, include_sent=False)
     
     formatted = []
     for r in reminders:
-        if not r.get('is_sent', False):
-            formatted.append({
-                'id': r['id'],
-                'text': r['text'],
-                'remind_at': r.get('remind_at', '')
-            })
+        formatted.append({
+            'id': r['id'],
+            'text': r['text'],
+            'remind_at': r.get('remind_at', '')
+        })
     
     return jsonify({'reminders': formatted})
 
