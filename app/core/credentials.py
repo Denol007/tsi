@@ -24,9 +24,20 @@ logger = logging.getLogger(__name__)
 def get_data_dir() -> Path:
     """Get persistent data directory for Railway volume or local"""
     railway_data = Path("/app/data")
-    if railway_data.exists() and os.access(railway_data, os.W_OK):
-        return railway_data
-    return Path.cwd()
+    
+    # Try to create the directory if it doesn't exist
+    try:
+        railway_data.mkdir(parents=True, exist_ok=True)
+        if os.access(railway_data, os.W_OK):
+            logger.info(f"📁 Using Railway volume: {railway_data}")
+            return railway_data
+    except Exception as e:
+        logger.warning(f"Cannot use Railway volume: {e}")
+    
+    # Fallback to current working directory
+    cwd = Path.cwd()
+    logger.warning(f"⚠️ Using local storage (not persistent): {cwd}")
+    return cwd
 
 
 class CredentialManager:
