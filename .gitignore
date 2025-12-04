@@ -17,6 +17,11 @@ dist/
 *.egg-info/
 .eggs/
 
+# Environment files with secrets
+.env
+*.db
+credentials.db
+
 # Generated calendar files
 *.json
 *.ics
@@ -26,7 +31,9 @@ calendar_*.ics
 # Credentials (IMPORTANT - never commit these!)
 credentials.json
 token.json
+google_credentials.json
 *.token
+*.key
 
 # IDE
 .vscode/

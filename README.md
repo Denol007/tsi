@@ -1,262 +1,331 @@
-# TSI Calendar v2+
+# Smart Campus Assistant 🎓
 
-<code style="color : red">After the latest system updates, it became impossible to obtain the schedule via the link (11.2025).  
-Data retrieval was rewritten using the mobile application backend.
-</code>
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python">
+  <img src="https://img.shields.io/badge/Telegram-Bot-blue.svg" alt="Telegram">
+  <img src="https://img.shields.io/badge/FastAPI-REST%20API-green.svg" alt="FastAPI">
+  <img src="https://img.shields.io/badge/License-Educational-yellow.svg" alt="License">
+</p>
 
+An intelligent campus assistant for TSI (Transport and Telecommunication Institute) students. Get your schedule, find free rooms, and receive smart recommendations through Telegram bot or REST API.
 
-A Python application to scrape calendar events from the Transport and Telecommunication Institute (TSI) portal and export them to various formats.
+> 🔧 Built on top of [TTICalendarV2Python](https://github.com/foxybbb/TTICalendarV2Python)
 
-## Features
+## ✨ Features
 
-- **Authentication**: Secure login to TSI mob portal
-- **Filtering**: Filter by room, lecturer, group, and event type
-- **Date Range Support**: Fetch events for multiple months
-- **Multiple Export Formats**:
-  - **Table**
-  - **JSON**
-  - **ICS**
-  - **Google Calendar** (requires API setup)
-- **Sorting Options**: Sort by date, room, lecturer, group, or time
+### 📅 Schedule Management
+- View daily, weekly, and monthly schedules
+- Get next upcoming class
+- Search for specific subjects or lecturers
+- Export to ICS format
 
+### 🤖 AI Assistant
+- Natural language queries in Russian and English
+- Intent recognition for smart responses
+- Contextual recommendations
+- **🔌 Multi-provider AI** - Groq, Gemini, Ollama, OpenAI support
 
-## Installation
+### 🔐 In-Bot Authentication
+- Secure TSI login through Telegram bot
+- Encrypted credential storage (Fernet + PBKDF2)
+- No need to store credentials in .env file
 
-1. Install dependencies:
+### ⏰ Reminders & Notes
+- Set custom reminders with date/time
+- Automatic reminder notifications
+- Personal notes storage
+- Deadline tracking
+
+### 🚪 Campus Services
+- Find free rooms in real-time
+- Room location information
+- Lecturer contacts
+
+### 📊 Additional Features
+- Statistics and analytics
+- Weather integration (Riga)
+- Motivational quotes
+
+### 📱 Multiple Interfaces
+- **Telegram Bot** - Chat-based interface
+- **REST API** - For custom integrations
+- **CLI** - Command-line interface
+
+## 🚀 Quick Start
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/foxybbb/TTICalendarV2Python.git smart_campus_assistant
+cd smart_campus_assistant
+```
+
+### 2. Install dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Configure your credentials in `config.py`:
-```python
-USERNAME = "your_username"
-PASSWORD = "your_password"
-```
+### 3. Configure environment
 
-## Configuration
-
-Edit `config.py` to customize:
-
-### Filters
-```python
-FILTERS = {
-    "room": "reset_room",        # Specific room or "reset_room" for all
-    "lecturer": "Gercevs",       # Lecturer name or "reset_lecturer" for all
-    "group": "3903BDA",          # Group code or "reset_group" for all
-    "type": "reset_type"         # Event type or "reset_type" for all
-}
-```
-
-### Date Range
-```python
-DATE_RANGE = {
-    "from_year": 2025,
-    "from_month": 9,     # September
-    "to_year": 2025,
-    "to_month": 12       # December
-}
-```
-
-### Display Options
-```python
-DISPLAY = {
-    "sort_by": "date",         # Options: "date", "room", "lecturer", "group", "time"
-    "show_canceled": True      # Show or hide canceled events
-}
-```
-
-### Output Formats
-```python
-OUTPUT = {
-    "formats": ["table", "json", "ics"],  # Choose which formats to export
-    "json_file": "calendar_events.json",
-    "ics_file": "calendar_events.ics",
-}
-```
-
-## Usage
-
-Run the main script:
 ```bash
-python main.py
+cp .env.example .env
 ```
 
-The script will:
-1. Authenticate with TSI portal
-2. Fetch calendar data for the specified period
-3. Filter and sort events
-4. Export to the specified formats
+Edit `.env` file with your credentials:
 
-## Output Formats
+```env
+# Required
+TELEGRAM_BOT_TOKEN=your_bot_token
 
-### Table Output
-Displays events in a formatted table in the terminal:
-```
-Date         | Time          | Title                      | Room       | Group    | Lecturer  | Type   | Note
-2025-11-01 S | 08:45-10:15   | Electronics...             | L8 (125)   | 3401BNA  | Gercevs   | Lesson | -
+# Optional - AI Providers (at least one recommended)
+GROQ_API_KEY=your_groq_key      # Free! Get at console.groq.com
+GEMINI_API_KEY=your_gemini_key  # Free! Get at aistudio.google.com
 ```
 
-### JSON Output
-Exports events to a JSON file:
-```json
-[
-  {
-    "date": "2025-11-01",
-    "start_time": "08:45",
-    "end_time": "10:15",
-    "title": "Electronics and Microelectronics",
-    "room": "L8 (125)",
-    "group": "3401BNA, 3403BNA",
-    "lecturer": "Gercevs Ivans",
-    "type": "Lesson",
-    "description": ""
-  }
-]
+### 4. Run the application
+
+**Telegram Bot:**
+```bash
+python run.py bot
 ```
 
-### ICS Output
-Creates an iCalendar file compatible with:
-- Google Calendar
-- Microsoft Outlook
-- Apple Calendar
-- Other calendar applications
+**Web API:**
+```bash
+python run.py web
+```
 
-Import by:
-1. Opening your calendar application
-2. Selecting "Import Calendar"
-3. Choosing the `calendar_events.ics` file
+**CLI Mode (original behavior):**
+```bash
+python run.py cli
+```
 
-### Google Calendar Export
+## 📁 Project Structure
 
-To use Google Calendar direct export:
+```
+smart_campus_assistant/
+├── app/
+│   ├── __init__.py
+│   ├── config.py              # Configuration management
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── calendar_service.py # TSI calendar integration
+│   │   └── database.py         # SQLite database
+│   ├── ai/
+│   │   ├── __init__.py
+│   │   ├── assistant.py        # AI assistant
+│   │   └── intent_classifier.py # Intent detection
+│   ├── bot/
+│   │   ├── __init__.py
+│   │   └── bot.py              # Telegram bot
+│   └── web/
+│       ├── __init__.py
+│       └── api.py              # FastAPI REST API
+├── TSICalendar.py              # Original calendar scraper
+├── Exporters.py                # Export utilities
+├── config.py                   # Legacy config (compatibility)
+├── main.py                     # Original entry point
+├── run.py                      # New unified entry point
+├── requirements.txt
+├── .env.example
+└── README.md
+```
 
-1. Enable Google Calendar API:
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a new project
-   - Enable Google Calendar API
-   - Create OAuth 2.0 credentials
-   - Download as `credentials.json`
+## 🤖 Telegram Bot Commands
 
-2. Configure in `config.py`:
+### Basic Commands
+
+| Command | Description |
+|---------|-------------|
+| `/start` | Start the bot |
+| `/help` | Show help |
+| `/login` | Login to TSI account |
+| `/logout` | Logout from TSI account |
+| `/settings` | Bot settings |
+
+### Schedule Commands
+
+| Command | Description |
+|---------|-------------|
+| `/today` | Today's schedule |
+| `/tomorrow` | Tomorrow's schedule |
+| `/week` | This week's schedule |
+| `/next` | Next upcoming class |
+| `/search <query>` | Search schedule |
+
+### Features Commands
+
+| Command | Description |
+|---------|-------------|
+| `/stats` | Your learning statistics |
+| `/exams` | Upcoming exams |
+| `/weather` | Weather in Riga |
+| `/motivation` | Random motivational quote |
+| `/notes` | Your personal notes |
+| `/deadlines` | Your deadlines |
+| `/freerooms` | Available rooms now |
+
+### Reminders & Notes Commands
+
+| Command | Description |
+|---------|-------------|
+| `/remind <time> <text>` | Set reminder |
+| `/reminders` | Show all reminders |
+| `/note <text>` | Add a note |
+| `/notes` | Show all notes |
+
+### Natural Language Examples
+
+```
+"Что сегодня?" → Shows today's schedule
+"Когда следующая пара?" → Shows next class
+"Найди математику" → Searches for math classes
+"Свободные аудитории" → Shows free rooms
+"Напомни завтра в 10:00 про лабу" → Sets a reminder
+"Запиши заметку: купить тетрадь" → Saves a note
+```
+
+## 🌐 REST API Endpoints
+
+### Schedule
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/schedule/today` | Today's events |
+| GET | `/api/schedule/week` | This week's events |
+| GET | `/api/schedule/next` | Next event |
+| GET | `/api/schedule/events` | Events with filters |
+| GET | `/api/schedule/search` | Search events |
+
+### Rooms
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/rooms/free` | Free rooms |
+
+### Assistant
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/assistant/query` | Query the AI |
+
+### Users
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/users` | Create user |
+| GET | `/api/users/{id}` | Get user |
+| PATCH | `/api/users/{id}` | Update user |
+
+### API Documentation
+
+When running the web server:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TELEGRAM_BOT_TOKEN` | Yes | Telegram bot token |
+| `GROQ_API_KEY` | No | Groq API key (free AI) |
+| `GEMINI_API_KEY` | No | Google Gemini API key |
+| `DATABASE_PATH` | No | SQLite database path |
+| `ENCRYPTION_KEY` | No | Key for credential encryption |
+| `TIMEZONE` | No | Timezone (default: Europe/Riga) |
+
+### Getting a Telegram Bot Token
+
+1. Open Telegram and find [@BotFather](https://t.me/BotFather)
+2. Send `/newbot` command
+3. Follow the instructions to create your bot
+4. Copy the token to your `.env` file
+
+### Getting Free AI API Keys
+
+**Groq (Recommended - Fast & Free):**
+1. Go to [console.groq.com](https://console.groq.com)
+2. Sign up and create API key
+3. Add to `.env`: `GROQ_API_KEY=your_key`
+
+**Google Gemini (Free):**
+1. Go to [aistudio.google.com](https://aistudio.google.com)
+2. Get API key
+3. Add to `.env`: `GEMINI_API_KEY=your_key`
+
+## 🔧 Development
+
+### Running Tests
+
+```bash
+pytest tests/
+```
+
+### Code Formatting
+
+```bash
+black app/
+flake8 app/
+```
+
+### Adding New Intents
+
+Edit `app/ai/intent_classifier.py`:
+
 ```python
-GOOGLE_CALENDAR = {
-    "calendar_id": "your_calendar_id@group.calendar.google.com",
-    "credentials_file": "credentials.json",
-    "token_file": "token.json",
-    "timezone": "Europe/Riga",
-    "location": "Transport and Telecommunication Institute, Lauvas iela 2, Riga, LV-1019, Latvia"
+INTENT_PATTERNS = {
+    "my_new_intent": {
+        "patterns": [r"\b(keyword1|keyword2)\b"],
+        "keywords": ["keyword1", "keyword2"],
+        "examples": ["Example phrase 1", "Example phrase 2"]
+    },
+    # ...
 }
 ```
 
-3. Add `"google_calendar"` to output formats:
-```python
-OUTPUT = {
-    "formats": ["table", "json", "ics", "google_calendar"],
-}
-```
+## 📝 Original Features (from TTICalendarV2Python)
 
-## Examples
+This project extends the original TTICalendarV2Python with:
+- Telegram bot interface
+- REST API
+- AI-powered assistant
+- User management
+- Notifications system
 
-### Example 1: Get all events for a lecturer
-```python
-FILTERS = {
-    "room": "reset_room",
-    "lecturer": "Gercevs",
-    "group": "reset_group",
-    "type": "reset_type"
-}
-```
+Original features preserved:
+- TSI portal authentication
+- Calendar data fetching
+- Table, JSON, ICS exports
+- Timezone/DST handling
 
-### Example 2: Get events for a specific group
-```python
-FILTERS = {
-    "room": "reset_room",
-    "lecturer": "reset_lecturer",
-    "group": "5502DTL",
-    "type": "reset_type"
-}
-```
+## 🤝 Contributing
 
-### Example 3: Get events in a specific room
-```python
-FILTERS = {
-    "room": "L1 (125)",
-    "lecturer": "reset_lecturer",
-    "group": "reset_group",
-    "type": "reset_type"
-}
-```
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-### Example 4: Sort by room
-```python
-DISPLAY = {
-    "sort_by": "room",
-    "show_canceled": False  # Hide canceled events
-}
-```
+## 📄 License
 
-## Project Structure
+This project is for educational purposes at TSI.
 
-```
-TTICalendarV2Python/
-├── config.py           # Configuration file
-├── main.py            # Main entry point
-├── TSICalendar.py     # Calendar scraper
-├── Exporters.py       # Export to various formats
-├── requirements.txt   # Dependencies
-└── README.md         # This file
-```
+## 🙏 Acknowledgments
 
-## Timezone and DST Handling
+- [TTICalendarV2Python](https://github.com/foxybbb/TTICalendarV2Python) - Original calendar scraper
+- Transport and Telecommunication Institute (TSI)
+- Python-telegram-bot community
+- FastAPI framework
 
-The application properly handles Daylight Saving Time (DST) transitions:
+## 📞 Support
 
-- **Automatic DST Detection**: Uses `pytz` library to automatically detect whether DST is active for each event date
-- **Europe/Riga Timezone**: Configured for TSI location (GMT+2 in winter, GMT+3 in summer)
-- **Accurate Times**: Events exported to Google Calendar and ICS files will have correct local times regardless of DST
-- **No Manual Adjustments**: No need to manually adjust times for winter/summer transitions
+For issues or questions:
+- Check the [Issues](https://github.com/your-repo/issues) page
+- Make sure your credentials are correct
+- Verify your network connection
 
-### How It Works
+---
 
-The application uses timezone-aware datetime objects:
-```python
-# Before (naive datetime - incorrect DST handling):
-datetime(2025, 11, 15, 10, 30)  # Ambiguous - is this winter or summer time?
-
-# After (timezone-aware - correct DST handling):
-timezone.localize(datetime(2025, 11, 15, 10, 30))  # Automatically uses EET (winter)
-timezone.localize(datetime(2025, 9, 15, 10, 30))   # Automatically uses EEST (summer)
-```
-
-This ensures that:
-- Events in **summer** (March-October) are correctly marked as EEST (UTC+3)
-- Events in **winter** (November-March) are correctly marked as EET (UTC+2)
-- Calendar applications will display the correct local time
-
-## Requirements
-
-- Python 3.7+
-- requests
-- beautifulsoup4
-- python-dateutil
-- pytz (for proper DST handling)
-
-Optional (for ICS export):
-- ics
-
-Optional (for Google Calendar):
-- google-auth
-- google-auth-oauthlib
-- google-api-python-client
-
-## License
-
-This project is for educational purposes.
-
-## Support
-
-For issues or questions, please check your configuration and ensure:
-- Credentials are correct
-- Date range is valid
-- Required packages are installed
-- Network connection is available
+Made with ❤️ for TSI students
