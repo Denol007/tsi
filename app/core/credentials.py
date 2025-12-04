@@ -47,7 +47,19 @@ class CredentialManager:
             db_path = str(get_data_dir() / "smart_campus.db")
         self.db_path = db_path
         logger.info(f"🔐 Credentials DB path: {self.db_path}")
-        self._master_key = master_key or os.getenv("ENCRYPTION_KEY") or self._generate_master_key()
+        
+        env_key = os.getenv("ENCRYPTION_KEY")
+        if env_key:
+            self._master_key = env_key
+            logger.info("✅ Using ENCRYPTION_KEY from environment")
+        elif master_key:
+            self._master_key = master_key
+            logger.info("Using provided master_key")
+        else:
+            self._master_key = self._generate_master_key()
+            logger.error("⚠️ ENCRYPTION_KEY not set! Credentials will be lost on restart!")
+            logger.error("Set ENCRYPTION_KEY in Railway variables!")
+        
         self._fernet = self._create_fernet()
         self._init_database()
     
