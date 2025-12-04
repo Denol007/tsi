@@ -10,6 +10,7 @@ import hashlib
 import secrets
 import sqlite3
 import logging
+from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime
 from cryptography.fernet import Fernet
@@ -20,13 +21,21 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def get_data_dir() -> Path:
+    """Get persistent data directory for Railway volume or local"""
+    railway_data = Path("/app/data")
+    if railway_data.exists() and os.access(railway_data, os.W_OK):
+        return railway_data
+    return Path.cwd()
+
+
 class CredentialManager:
     """
     Secure credential storage with encryption
     Uses Fernet symmetric encryption with PBKDF2 key derivation
     """
     
-    def __init__(self, db_path: str = "smart_campus.db", master_key: str = None):
+    def __init__(self, db_path: str = None, master_key: str = None):
         """
         Initialize credential manager
         
@@ -34,7 +43,10 @@ class CredentialManager:
             db_path: Path to SQLite database
             master_key: Master encryption key (generated if not provided)
         """
+        if db_path is None:
+            db_path = str(get_data_dir() / "smart_campus.db")
         self.db_path = db_path
+        logger.info(f"🔐 Credentials DB path: {self.db_path}")
         self._master_key = master_key or os.getenv("ENCRYPTION_KEY") or self._generate_master_key()
         self._fernet = self._create_fernet()
         self._init_database()

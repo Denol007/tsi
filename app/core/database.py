@@ -10,16 +10,28 @@ from datetime import datetime
 from typing import List, Dict, Optional, Any
 from pathlib import Path
 import logging
+import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def get_data_dir() -> Path:
+    """Get persistent data directory for Railway volume or local"""
+    railway_data = Path("/app/data")
+    if railway_data.exists() and os.access(railway_data, os.W_OK):
+        return railway_data
+    return Path.cwd()
+
+
 class Database:
     """SQLite database for user management and caching"""
     
-    def __init__(self, db_path: str = "smart_campus.db"):
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            db_path = str(get_data_dir() / "smart_campus.db")
         self.db_path = db_path
+        logger.info(f"📂 Database path: {self.db_path}")
         self._init_database()
     
     def _init_database(self):
