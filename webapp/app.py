@@ -170,20 +170,18 @@ def get_user():
     user = request.telegram_user
     telegram_id = user['id']
     
+    # Check credentials first
+    is_logged_in = credentials.has_credentials(telegram_id)
+    creds = credentials.get_credentials(telegram_id) if is_logged_in else None
+    
     # Get from database
     db_user = db.get_user(telegram_id)
     
-    if not db_user:
-        return jsonify({
-            'id': telegram_id,
-            'is_logged_in': False
-        })
-    
     return jsonify({
         'id': telegram_id,
-        'username': db_user.get('username'),
-        'group_code': db_user.get('group_code'),
-        'is_logged_in': credentials.has_credentials(telegram_id)
+        'username': creds.get('username') if creds else None,
+        'group_code': db_user.get('group_code') if db_user else None,
+        'is_logged_in': is_logged_in
     })
 
 @app.route('/api/schedule/<period>')
@@ -384,6 +382,10 @@ def login_tsi():
         
         # Save credentials (use correct method name)
         credentials.store_credentials(telegram_id, username, password)
+        
+        # Create user in DB if not exists
+        if not db.get_user(telegram_id):
+            db.create_user(telegram_id)
         
         # Clear schedule cache
         clear_user_cache(telegram_id)
