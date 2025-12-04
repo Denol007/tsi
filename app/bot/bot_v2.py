@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 load_dotenv()
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, MenuButtonWebApp, WebAppInfo
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -227,6 +227,20 @@ class SmartCampusBotV2:
             BotCommand("help", "❓ Справка"),
         ]
         await self.application.bot.set_my_commands(commands)
+        
+        # Set Menu button to open Mini App if URL is configured
+        webapp_url = os.getenv('WEBAPP_URL')
+        if webapp_url:
+            try:
+                await self.application.bot.set_chat_menu_button(
+                    menu_button=MenuButtonWebApp(
+                        text="📱 Открыть",
+                        web_app=WebAppInfo(url=webapp_url)
+                    )
+                )
+                logger.info(f"Menu button set to WebApp: {webapp_url}")
+            except Exception as e:
+                logger.warning(f"Failed to set menu button: {e}")
     
     # ==================== Login Flow ====================
     
@@ -513,11 +527,17 @@ _"Что сегодня?" / "Напомни через час..."_
                     InlineKeyboardButton("🚪 Аудитории", callback_data="menu_rooms"),
                     InlineKeyboardButton("☀️ Погода", callback_data="menu_weather")
                 ],
-                [
+            ]
+            # Add Mini App button if configured
+            webapp_url = os.getenv('WEBAPP_URL')
+            if webapp_url:
+                keyboard.append([
+                    InlineKeyboardButton("📱 Открыть приложение", web_app=WebAppInfo(url=webapp_url))
+                ])
+            keyboard.append([
                     InlineKeyboardButton("⚙️ Настройки", callback_data="settings"),
                     InlineKeyboardButton("❓ Помощь", callback_data="help")
-                ]
-            ]
+            ])
             text = "📋 **Главное меню**\n\nВыбери действие:"
         else:
             keyboard = [

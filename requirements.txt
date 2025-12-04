@@ -13,7 +13,11 @@ python-dotenv>=1.0.0
 # Telegram Bot with job-queue for scheduled reminders
 python-telegram-bot[job-queue]>=20.0
 
-# Web API (FastAPI)
+# Web App (Flask for Telegram Mini App)
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# Web API (FastAPI) - optional for API
 fastapi>=0.100.0
 uvicorn>=0.23.0
 pydantic>=2.0.0
