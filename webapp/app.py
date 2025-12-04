@@ -149,6 +149,25 @@ def require_auth(f):
         return f(*args, **kwargs)
     return decorated
 
+def optional_auth(f):
+    """Decorator for optional Telegram authentication - allows anonymous access"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        init_data = request.args.get('init_data', '')
+        user = validate_telegram_data(init_data)
+        
+        if not user:
+            # For development mode
+            if os.getenv('DEBUG', 'false').lower() == 'true':
+                user_id = request.headers.get('X-User-ID')
+                if user_id:
+                    user = {'id': int(user_id)}
+        
+        # Set user (can be None for anonymous access)
+        request.telegram_user = user
+        return f(*args, **kwargs)
+    return decorated
+
 # ==================== Static Files ====================
 
 @app.route('/')
@@ -164,10 +183,21 @@ def static_files(path):
 # ==================== API Routes ====================
 
 @app.route('/api/user')
-@require_auth
+@optional_auth
 def get_user():
     """Get user info"""
     user = request.telegram_user
+    
+    if not user:
+        # Anonymous user
+        return jsonify({
+            'id': None,
+            'username': None,
+            'group_code': None,
+            'is_logged_in': False,
+            'is_anonymous': True
+        })
+    
     telegram_id = user['id']
     
     # Check credentials first
@@ -301,6 +331,89 @@ def get_schedule(period):
         logger.error(f"Schedule error: {e}")
         import traceback
         traceback.print_exc()
+        return jsonify({'error': str(e), 'schedule': []}), 500
+
+@app.route('/api/schedule/public/<group_code>/<period>')
+def get_public_schedule(group_code, period):
+    """Get schedule for any group without authentication"""
+    try:
+        # Calculate date range
+        now = datetime.now(TIMEZONE)
+        
+        if period == 'today':
+            target_date = now.date()
+        elif period == 'tomorrow':
+            target_date = (now + timedelta(days=1)).date()
+        elif period == 'week':
+            target_date = None
+        else:
+            target_date = now.date()
+        
+        # Fetch from TSI (public, no login needed for some groups)
+        calendar_service = CalendarService()
+        
+        try:
+            events = calendar_service.fetch_events(group=group_code.upper())
+            calendar_service.close()
+        except Exception as e:
+            logger.error(f"CalendarService error: {e}")
+            return jsonify({'schedule': [], 'message': 'Не удалось загрузить расписание'})
+        
+        if not events:
+            return jsonify({'schedule': []})
+        
+        # Filter events by date
+        if period == 'week':
+            start_date_str = now.date().strftime('%Y-%m-%d')
+            end_date_str = (now + timedelta(days=7)).date().strftime('%Y-%m-%d')
+            filtered_events = [
+                e for e in events 
+                if start_date_str <= e.get('date', '') <= end_date_str
+            ]
+        else:
+            target_date_str = target_date.strftime('%Y-%m-%d')
+            filtered_events = [
+                e for e in events 
+                if e.get('date') == target_date_str
+            ]
+        
+        # Format events
+        schedule = []
+        for event in filtered_events:
+            start_time = event.get('start_time', '')
+            end_time = event.get('end_time', '')
+            event_date = event.get('date', '')
+            
+            is_current = False
+            if period == 'today' and start_time and end_time:
+                try:
+                    now_time = now.strftime('%H:%M')
+                    is_current = start_time <= now_time <= end_time
+                except:
+                    pass
+            
+            display_date = None
+            if period == 'week' and event_date:
+                try:
+                    display_date = datetime.strptime(event_date, '%Y-%m-%d').strftime('%d.%m')
+                except:
+                    display_date = event_date
+            
+            schedule.append({
+                'subject': event.get('title', event.get('name', 'Без названия')),
+                'teacher': event.get('lecturer', ''),
+                'room': event.get('room', ''),
+                'start_time': start_time,
+                'end_time': end_time,
+                'date': display_date,
+                'is_current': is_current
+            })
+        
+        schedule.sort(key=lambda x: (x.get('date') or '', x['start_time']))
+        return jsonify({'schedule': schedule, 'group': group_code.upper()})
+        
+    except Exception as e:
+        logger.error(f"Public schedule error: {e}")
         return jsonify({'error': str(e), 'schedule': []}), 500
 
 @app.route('/api/schedule/refresh', methods=['POST'])

@@ -1160,11 +1160,22 @@
         // User data
         const user = tg.initDataUnsafe?.user;
         let isLoggedIn = false;
-        let currentGroup = null;
+        let currentGroup = localStorage.getItem('selectedGroup') || null;
+        let isAnonymous = false;
 
         if (user) {
             document.getElementById('user-name').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
             document.getElementById('user-avatar').textContent = user.first_name.charAt(0).toUpperCase();
+        } else {
+            document.getElementById('user-name').textContent = 'Гость';
+            document.getElementById('user-avatar').textContent = '👤';
+            isAnonymous = true;
+        }
+        
+        // Show saved group if exists
+        if (currentGroup) {
+            document.getElementById('user-group').textContent = `Группа: ${currentGroup}`;
+            document.getElementById('current-group').textContent = currentGroup;
         }
 
         // API base URL
@@ -1174,26 +1185,36 @@
         async function loadData() {
             try {
                 const userResp = await fetch(`${API_BASE}/user?` + new URLSearchParams({
-                    init_data: tg.initData
+                    init_data: tg.initData || ''
                 }));
                 if (userResp.ok) {
                     const userData = await userResp.json();
                     isLoggedIn = userData.is_logged_in;
-                    currentGroup = userData.group_code;
+                    isAnonymous = userData.is_anonymous || false;
                     
+                    // Use server group if available, otherwise keep local
                     if (userData.group_code) {
-                        document.getElementById('user-group').textContent = `Группа: ${userData.group_code}`;
-                        document.getElementById('current-group').textContent = userData.group_code;
+                        currentGroup = userData.group_code;
+                        localStorage.setItem('selectedGroup', currentGroup);
+                    }
+                    
+                    if (currentGroup) {
+                        document.getElementById('user-group').textContent = `Группа: ${currentGroup}`;
+                        document.getElementById('current-group').textContent = currentGroup;
                     }
                     
                     updateLoginStatus(userData);
                 }
 
                 loadTodaySchedule();
-                loadReminders();
+                if (!isAnonymous) {
+                    loadReminders();
+                }
                 
             } catch (error) {
                 console.error('Failed to load data:', error);
+                // Still try to load schedule with local group
+                loadTodaySchedule();
             }
         }
 
@@ -1204,7 +1225,13 @@
             const loginBtn = document.getElementById('login-btn');
             const logoutBtn = document.getElementById('logout-btn');
             
-            if (userData.is_logged_in) {
+            if (userData.is_anonymous) {
+                statusEl.classList.add('not-logged');
+                titleEl.textContent = 'Гостевой режим';
+                subtitleEl.textContent = 'Выбери группу для просмотра расписания';
+                loginBtn.style.display = 'none';
+                logoutBtn.style.display = 'none';
+            } else if (userData.is_logged_in) {
                 statusEl.classList.remove('not-logged');
                 titleEl.textContent = `✓ ${userData.username || 'Авторизован'}`;
                 subtitleEl.textContent = 'Аккаунт TSI подключён';
@@ -1213,7 +1240,7 @@
             } else {
                 statusEl.classList.add('not-logged');
                 titleEl.textContent = 'Не авторизован';
-                subtitleEl.textContent = 'Войди для просмотра расписания';
+                subtitleEl.textContent = 'Выбери группу для расписания';
                 loginBtn.style.display = 'flex';
                 logoutBtn.style.display = 'none';
             }
@@ -1222,17 +1249,7 @@
         async function loadTodaySchedule() {
             const container = document.getElementById('today-schedule');
             
-            // Check login and group status first
-            if (!isLoggedIn) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">🔐</div>
-                        <div class="empty-text">Войди в аккаунт в настройках</div>
-                    </div>
-                `;
-                return;
-            }
-            
+            // Check if group is selected
             if (!currentGroup) {
                 container.innerHTML = `
                     <div class="empty-state">
@@ -1247,9 +1264,16 @@
             container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
             
             try {
-                const resp = await fetch(`${API_BASE}/schedule/today?` + new URLSearchParams({
-                    init_data: tg.initData
-                }));
+                // Use public API if not logged in, otherwise use authenticated API
+                let resp;
+                if (isLoggedIn && tg.initData) {
+                    resp = await fetch(`${API_BASE}/schedule/today?` + new URLSearchParams({
+                        init_data: tg.initData
+                    }));
+                } else {
+                    // Public API - no auth needed
+                    resp = await fetch(`${API_BASE}/schedule/public/${currentGroup}/today`);
+                }
                 
                 if (resp.ok) {
                     const data = await resp.json();
@@ -1373,17 +1397,7 @@
             
             const container = document.getElementById('full-schedule');
             
-            // Check login and group status first
-            if (!isLoggedIn) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">🔐</div>
-                        <div class="empty-text">Войди в аккаунт в настройках</div>
-                    </div>
-                `;
-                return;
-            }
-            
+            // Check if group is selected
             if (!currentGroup) {
                 container.innerHTML = `
                     <div class="empty-state">
@@ -1397,9 +1411,15 @@
             container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
             
             try {
-                const resp = await fetch(`${API_BASE}/schedule/${period}?` + new URLSearchParams({
-                    init_data: tg.initData
-                }));
+                // Use public API if not logged in
+                let resp;
+                if (isLoggedIn && tg.initData) {
+                    resp = await fetch(`${API_BASE}/schedule/${period}?` + new URLSearchParams({
+                        init_data: tg.initData
+                    }));
+                } else {
+                    resp = await fetch(`${API_BASE}/schedule/public/${currentGroup}/${period}`);
+                }
                 
                 if (resp.ok) {
                     const data = await resp.json();
@@ -1735,28 +1755,33 @@
                 return;
             }
             
-            try {
-                const resp = await fetch(`${API_BASE}/group?` + new URLSearchParams({ init_data: tg.initData }), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ group_code: groupCode })
-                });
-                
-                if (resp.ok) {
-                    closeModal('group-modal');
-                    currentGroup = groupCode;
-                    document.getElementById('user-group').textContent = `Группа: ${groupCode}`;
-                    document.getElementById('current-group').textContent = groupCode;
-                    tg.showPopup({ message: `✅ Группа: ${groupCode}` });
-                    // Reload schedule with new group
-                    loadTodaySchedule();
-                } else {
-                    const data = await resp.json();
-                    tg.showAlert(data.error || 'Ошибка');
+            // Always save to localStorage
+            localStorage.setItem('selectedGroup', groupCode);
+            currentGroup = groupCode;
+            document.getElementById('user-group').textContent = `Группа: ${groupCode}`;
+            document.getElementById('current-group').textContent = groupCode;
+            
+            // Try to save to server if logged in
+            if (isLoggedIn && tg.initData) {
+                try {
+                    const resp = await fetch(`${API_BASE}/group?` + new URLSearchParams({ init_data: tg.initData }), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ group_code: groupCode })
+                    });
+                    
+                    if (!resp.ok) {
+                        console.warn('Failed to save group to server');
+                    }
+                } catch (error) {
+                    console.warn('Failed to save group to server:', error);
                 }
-            } catch (error) {
-                tg.showAlert('Ошибка сохранения');
             }
+            
+            closeModal('group-modal');
+            tg.showPopup({ message: `✅ Группа: ${groupCode}` });
+            // Reload schedule with new group
+            loadTodaySchedule();
         }
 
         // =============== Modals ===============
