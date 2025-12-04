@@ -2072,11 +2072,19 @@ _Скажи "измени группу на XXXX" или "выключи уве�
         if not events:
             return "Нет событий"
         
+        # Sort events by date and time
+        def sort_key(e):
+            date = e.get('date', '9999-99-99')
+            time = e.get('start_time', '99:99')
+            return (date, time)
+        
+        sorted_events = sorted(events, key=sort_key)
+        
         lines = []
         current_date = None
         day_names = {0: "Пн", 1: "Вт", 2: "Ср", 3: "Чт", 4: "Пт", 5: "Сб", 6: "Вс"}
         
-        for event in events:
+        for event in sorted_events:
             event_date = event.get('date', '')
             
             if event_date != current_date:
