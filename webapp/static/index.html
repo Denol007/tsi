@@ -314,6 +314,29 @@
             50% { opacity: 0.5; }
         }
 
+        /* Date Separator for Week View */
+        .date-separator {
+            background: linear-gradient(135deg, var(--accent) 0%, #6366f1 100%);
+            color: white;
+            padding: 10px 16px;
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .date-separator .date-icon {
+            font-size: 16px;
+        }
+
+        .date-separator .date-day {
+            font-size: 13px;
+            opacity: 0.9;
+            font-weight: 400;
+            margin-left: auto;
+        }
+
         /* Empty State */
         .empty-state {
             text-align: center;
@@ -805,20 +828,70 @@
                 if (resp.ok) {
                     const data = await resp.json();
                     if (data.schedule && data.schedule.length > 0) {
-                        container.innerHTML = data.schedule.map(item => `
-                            <div class="schedule-item ${item.is_current ? 'current' : ''}">
-                                <div class="schedule-time">
-                                    <div class="time-start">${item.start_time}</div>
-                                    <div class="time-end">${item.end_time}</div>
+                        // Check if week view (has dates)
+                        const isWeekView = period === 'week';
+                        
+                        if (isWeekView) {
+                            // Group by date
+                            const grouped = {};
+                            const dayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+                            
+                            data.schedule.forEach(item => {
+                                const date = item.date || 'Без даты';
+                                if (!grouped[date]) grouped[date] = [];
+                                grouped[date].push(item);
+                            });
+                            
+                            let html = '';
+                            Object.keys(grouped).sort().forEach(date => {
+                                // Parse date to get day name
+                                let dayName = '';
+                                try {
+                                    const [day, month] = date.split('.');
+                                    const year = new Date().getFullYear();
+                                    const dateObj = new Date(year, parseInt(month) - 1, parseInt(day));
+                                    dayName = dayNames[dateObj.getDay()];
+                                } catch(e) {}
+                                
+                                html += `<div class="date-separator">
+                                    <span class="date-icon">📅</span>
+                                    <span>${date}</span>
+                                    <span class="date-day">${dayName}</span>
+                                </div>`;
+                                
+                                grouped[date].forEach(item => {
+                                    html += `<div class="schedule-item ${item.is_current ? 'current' : ''}">
+                                        <div class="schedule-time">
+                                            <div class="time-start">${item.start_time}</div>
+                                            <div class="time-end">${item.end_time}</div>
+                                        </div>
+                                        <div class="schedule-divider"></div>
+                                        <div class="schedule-content">
+                                            <div class="schedule-subject">${item.subject}</div>
+                                            <div class="schedule-details">${item.teacher || ''}</div>
+                                            ${item.room ? `<span class="schedule-room">📍 ${item.room}</span>` : ''}
+                                        </div>
+                                    </div>`;
+                                });
+                            });
+                            container.innerHTML = html;
+                        } else {
+                            // Today/Tomorrow view - no date grouping needed
+                            container.innerHTML = data.schedule.map(item => `
+                                <div class="schedule-item ${item.is_current ? 'current' : ''}">
+                                    <div class="schedule-time">
+                                        <div class="time-start">${item.start_time}</div>
+                                        <div class="time-end">${item.end_time}</div>
+                                    </div>
+                                    <div class="schedule-divider"></div>
+                                    <div class="schedule-content">
+                                        <div class="schedule-subject">${item.subject}</div>
+                                        <div class="schedule-details">${item.teacher || ''}</div>
+                                        ${item.room ? `<span class="schedule-room">📍 ${item.room}</span>` : ''}
+                                    </div>
                                 </div>
-                                <div class="schedule-divider"></div>
-                                <div class="schedule-content">
-                                    <div class="schedule-subject">${item.subject}</div>
-                                    <div class="schedule-details">${item.teacher || ''} ${item.date ? '• ' + item.date : ''}</div>
-                                    ${item.room ? `<span class="schedule-room">📍 ${item.room}</span>` : ''}
-                                </div>
-                            </div>
-                        `).join('');
+                            `).join('');
+                        }
                     } else {
                         container.innerHTML = `
                             <div class="empty-state">
