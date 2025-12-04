@@ -22,7 +22,8 @@ def run_webapp():
     """Run Flask web app in a thread"""
     try:
         from webapp.app import app
-        port = int(os.getenv('PORT', os.getenv('WEB_PORT', 5000)))
+        # Railway uses PORT env var, default to 8080
+        port = int(os.getenv('PORT', 8080))
         logger.info(f"Starting Web App on port {port}")
         # Use threaded=False since we're already in a thread
         app.run(host='0.0.0.0', port=port, debug=False, threaded=True, use_reloader=False)
