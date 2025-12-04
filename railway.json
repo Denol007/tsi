@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "python run.py bot",
+    "startCommand": "python run_combined.py all",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   },
