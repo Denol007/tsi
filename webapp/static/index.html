@@ -2156,128 +2156,157 @@
             gpa: null,
             attendance: null,
             bills: null,
-            dashboard: null
+            dashboard: null,
+            loaded: false,
+            loading: false
         };
 
         function showMyTSI() {
             navigate('mytsi');
-            loadMyTSIDashboard();
         }
 
         async function loadMyTSIDashboard() {
-            // Load GPA
-            loadMyTSIGPACard();
-            // Load Attendance summary
-            loadMyTSIAttendanceCard();
-            // Load Credits
-            loadMyTSICreditsCard();
+            // If already loaded, just render from cache
+            if (myTSIData.loaded) {
+                renderMyTSICards();
+                return;
+            }
+            
+            // If loading in progress, wait
+            if (myTSIData.loading) {
+                return;
+            }
+            
+            myTSIData.loading = true;
+            
+            // Show loading state
+            document.getElementById('mytsi-gpa-card').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            document.getElementById('mytsi-attendance-card').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            document.getElementById('mytsi-credits-card').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            try {
+                // Load ALL data in one request
+                const resp = await fetch(`${API_BASE}/mytsi/all?` + new URLSearchParams({ init_data: tg.initData }));
+                if (resp.ok) {
+                    const data = await resp.json();
+                    myTSIData.gpa = data.gpa;
+                    myTSIData.attendance = data.attendance;
+                    myTSIData.dashboard = data.dashboard;
+                    myTSIData.bills = data.bills;
+                    myTSIData.grades = data.grades;
+                    myTSIData.loaded = true;
+                    
+                    renderMyTSICards();
+                } else {
+                    const errorHtml = '<div class="empty-state"><div class="empty-icon">🔐</div><div class="empty-text">Войди для просмотра</div></div>';
+                    document.getElementById('mytsi-gpa-card').innerHTML = errorHtml;
+                    document.getElementById('mytsi-attendance-card').innerHTML = errorHtml;
+                    document.getElementById('mytsi-credits-card').innerHTML = errorHtml;
+                }
+            } catch (error) {
+                console.error('MyTSI load error:', error);
+                const errorHtml = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка загрузки</div></div>';
+                document.getElementById('mytsi-gpa-card').innerHTML = errorHtml;
+                document.getElementById('mytsi-attendance-card').innerHTML = errorHtml;
+                document.getElementById('mytsi-credits-card').innerHTML = errorHtml;
+            } finally {
+                myTSIData.loading = false;
+            }
+        }
+
+        function renderMyTSICards() {
+            // Render GPA card
+            const gpaContainer = document.getElementById('mytsi-gpa-card');
+            if (myTSIData.gpa) {
+                const data = myTSIData.gpa;
+                let emoji = '📊';
+                if (data.gpa >= 9) emoji = '🏆';
+                else if (data.gpa >= 8) emoji = '🌟';
+                else if (data.gpa >= 7) emoji = '✅';
+                
+                gpaContainer.innerHTML = `
+                    <div class="mytsi-stat-card">
+                        <div class="mytsi-stat-icon">${emoji}</div>
+                        <div class="mytsi-stat-content">
+                            <div class="mytsi-stat-value">${data.gpa}</div>
+                            <div class="mytsi-stat-label">Средний балл (GPA)</div>
+                            <div class="mytsi-stat-sublabel">${data.total_subjects} предметов • ${data.total_credits} кредитов</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Render Attendance card
+            const attContainer = document.getElementById('mytsi-attendance-card');
+            if (myTSIData.attendance) {
+                const data = myTSIData.attendance;
+                let emoji = '📊';
+                let barClass = '';
+                if (data.overall >= 80) { emoji = '✅'; barClass = 'good'; }
+                else if (data.overall >= 50) { emoji = '⚠️'; barClass = 'warning'; }
+                else { emoji = '🚨'; barClass = 'danger'; }
+                
+                attContainer.innerHTML = `
+                    <div class="mytsi-stat-card">
+                        <div class="mytsi-stat-icon">${emoji}</div>
+                        <div class="mytsi-stat-content">
+                            <div class="mytsi-stat-value">${data.overall}%</div>
+                            <div class="mytsi-stat-label">Посещаемость</div>
+                            <div class="attendance-bar">
+                                <div class="attendance-bar-fill ${barClass}" style="width: ${data.overall}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Render Credits card
+            const creditsContainer = document.getElementById('mytsi-credits-card');
+            if (myTSIData.dashboard && myTSIData.dashboard.credits) {
+                const credits = myTSIData.dashboard.credits;
+                creditsContainer.innerHTML = `
+                    <div class="credits-grid">
+                        <div class="credits-item">
+                            <div class="credits-value">${credits.required || 0}</div>
+                            <div class="credits-label">Нужно</div>
+                        </div>
+                        <div class="credits-item">
+                            <div class="credits-value" style="color: #22c55e;">${credits.completed || 0}</div>
+                            <div class="credits-label">Получено</div>
+                        </div>
+                        <div class="credits-item">
+                            <div class="credits-value" style="color: #f59e0b;">${credits.remaining || 0}</div>
+                            <div class="credits-label">Осталось</div>
+                        </div>
+                    </div>
+                `;
+            }
         }
 
         async function loadMyTSIGPACard() {
-            const container = document.getElementById('mytsi-gpa-card');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-            
-            try {
-                const resp = await fetch(`${API_BASE}/mytsi/gpa?` + new URLSearchParams({ init_data: tg.initData }));
-                if (resp.ok) {
-                    const data = await resp.json();
-                    myTSIData.gpa = data;
-                    
-                    let emoji = '📊';
-                    if (data.gpa >= 9) emoji = '🏆';
-                    else if (data.gpa >= 8) emoji = '🌟';
-                    else if (data.gpa >= 7) emoji = '✅';
-                    
-                    container.innerHTML = `
-                        <div class="mytsi-stat-card">
-                            <div class="mytsi-stat-icon">${emoji}</div>
-                            <div class="mytsi-stat-content">
-                                <div class="mytsi-stat-value">${data.gpa}</div>
-                                <div class="mytsi-stat-label">Средний балл (GPA)</div>
-                                <div class="mytsi-stat-sublabel">${data.total_subjects} предметов • ${data.total_credits} кредитов</div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔐</div><div class="empty-text">Войди для просмотра</div></div>';
-                }
-            } catch (error) {
-                console.error('GPA load error:', error);
-                container.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка загрузки</div></div>';
+            // Use cached data if available
+            if (myTSIData.loaded && myTSIData.gpa) {
+                renderMyTSICards();
+                return;
             }
+            // Otherwise load all data
+            await loadMyTSIDashboard();
         }
 
         async function loadMyTSIAttendanceCard() {
-            const container = document.getElementById('mytsi-attendance-card');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-            
-            try {
-                const resp = await fetch(`${API_BASE}/mytsi/attendance?` + new URLSearchParams({ init_data: tg.initData }));
-                if (resp.ok) {
-                    const data = await resp.json();
-                    myTSIData.attendance = data;
-                    
-                    let emoji = '📊';
-                    let barClass = '';
-                    if (data.overall >= 80) { emoji = '✅'; barClass = 'good'; }
-                    else if (data.overall >= 50) { emoji = '⚠️'; barClass = 'warning'; }
-                    else { emoji = '🚨'; barClass = 'danger'; }
-                    
-                    container.innerHTML = `
-                        <div class="mytsi-stat-card">
-                            <div class="mytsi-stat-icon">${emoji}</div>
-                            <div class="mytsi-stat-content">
-                                <div class="mytsi-stat-value">${data.overall}%</div>
-                                <div class="mytsi-stat-label">Посещаемость</div>
-                                <div class="attendance-bar">
-                                    <div class="attendance-bar-fill ${barClass}" style="width: ${data.overall}%"></div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔐</div><div class="empty-text">Войди для просмотра</div></div>';
-                }
-            } catch (error) {
-                console.error('Attendance load error:', error);
-                container.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка загрузки</div></div>';
+            if (myTSIData.loaded) {
+                renderMyTSICards();
+                return;
             }
+            await loadMyTSIDashboard();
         }
 
         async function loadMyTSICreditsCard() {
-            const container = document.getElementById('mytsi-credits-card');
-            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-            
-            try {
-                const resp = await fetch(`${API_BASE}/mytsi/dashboard?` + new URLSearchParams({ init_data: tg.initData }));
-                if (resp.ok) {
-                    const data = await resp.json();
-                    myTSIData.dashboard = data;
-                    
-                    const credits = data.credits || {};
-                    container.innerHTML = `
-                        <div class="credits-grid">
-                            <div class="credits-item">
-                                <div class="credits-value">${credits.required || 0}</div>
-                                <div class="credits-label">Нужно</div>
-                            </div>
-                            <div class="credits-item">
-                                <div class="credits-value" style="color: #22c55e;">${credits.completed || 0}</div>
-                                <div class="credits-label">Получено</div>
-                            </div>
-                            <div class="credits-item">
-                                <div class="credits-value" style="color: #f59e0b;">${credits.remaining || 0}</div>
-                                <div class="credits-label">Осталось</div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔐</div><div class="empty-text">Войди для просмотра</div></div>';
-                }
-            } catch (error) {
-                console.error('Credits load error:', error);
-                container.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка загрузки</div></div>';
+            if (myTSIData.loaded) {
+                renderMyTSICards();
+                return;
             }
+            await loadMyTSIDashboard();
         }
 
         let currentSemester = null;

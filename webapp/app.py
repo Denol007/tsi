@@ -44,6 +44,43 @@ TIMEZONE = ZoneInfo(os.getenv('TIMEZONE', 'Europe/Riga'))
 SCHEDULE_CACHE = {}
 CACHE_TTL = 300  # 5 minutes in seconds
 
+# ============== My TSI Cache ==============
+# Cache for my.tsi.lv data: {user_id: {'data': {...}, 'timestamp': time}}
+MYTSI_CACHE = {}
+MYTSI_CACHE_TTL = 600  # 10 minutes
+
+def get_cached_mytsi(user_id: int, data_type: str):
+    """Get my.tsi.lv data from cache if valid"""
+    cache_key = f"{user_id}_{data_type}"
+    cache_entry = MYTSI_CACHE.get(cache_key)
+    if cache_entry:
+        age = time.time() - cache_entry['timestamp']
+        if age < MYTSI_CACHE_TTL:
+            logger.info(f"MyTSI cache hit for user {user_id}, type {data_type} (age: {age:.0f}s)")
+            return cache_entry['data']
+    return None
+
+def set_cached_mytsi(user_id: int, data_type: str, data: dict):
+    """Save my.tsi.lv data to cache"""
+    cache_key = f"{user_id}_{data_type}"
+    MYTSI_CACHE[cache_key] = {
+        'data': data,
+        'timestamp': time.time()
+    }
+    logger.info(f"Cached MyTSI {data_type} for user {user_id}")
+
+def get_mytsi_service_cached(telegram_id: int):
+    """Get authenticated MyTSI service with session reuse"""
+    creds = credentials.get_credentials(telegram_id)
+    if not creds:
+        return None
+    
+    service = MyTSIService()
+    if service.login(creds['username'], creds['password']):
+        return service
+    return None
+# ============================================
+
 def get_cached_schedule(user_id: int, group_code: str):
     """Get schedule from cache if valid"""
     cache_entry = SCHEDULE_CACHE.get(user_id)
@@ -597,12 +634,89 @@ def delete_reminder(reminder_id):
 
 # ==================== My TSI Portal ====================
 
+@app.route('/api/mytsi/all')
+@require_auth
+def get_mytsi_all():
+    """Get all my.tsi.lv data in one request (cached)"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    # Check cache first
+    cached = get_cached_mytsi(telegram_id, 'all')
+    if cached:
+        return jsonify(cached)
+    
+    creds = credentials.get_credentials(telegram_id)
+    if not creds:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        service = MyTSIService()
+        if not service.login(creds['username'], creds['password']):
+            return jsonify({'error': 'Ошибка входа в my.tsi.lv'}), 401
+        
+        # Get all data in one session
+        grades = service.get_grades()
+        gpa = service.get_gpa()
+        attendance = service.get_attendance()
+        dashboard = service.get_dashboard_info()
+        bills = service.get_bills()
+        
+        service.close()
+        
+        # Calculate GPA stats
+        total_credits = sum(int(g.get('credits', 0)) for g in grades if g.get('credits', '').isdigit())
+        total_subjects = len(grades)
+        
+        # Group grades by semester
+        semesters = {}
+        for g in grades:
+            sem = g.get('semester', 'Без семестра')
+            if sem not in semesters:
+                semesters[sem] = []
+            semesters[sem].append({
+                'subject': g.get('subject', ''),
+                'grade': g.get('grade', ''),
+                'credits': g.get('credits', ''),
+                'date': g.get('date', ''),
+                'type': g.get('type', ''),
+                'lecturer': g.get('lecturer', '')
+            })
+        
+        grades_result = [{'semester': k, 'grades': v} for k, v in semesters.items()]
+        
+        result = {
+            'gpa': {
+                'gpa': gpa,
+                'total_credits': total_credits,
+                'total_subjects': total_subjects
+            },
+            'attendance': attendance,
+            'dashboard': dashboard,
+            'bills': bills,
+            'grades': {'semesters': grades_result}
+        }
+        
+        # Cache the result
+        set_cached_mytsi(telegram_id, 'all', result)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"MyTSI all error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/mytsi/grades')
 @require_auth
 def get_mytsi_grades():
     """Get grades from my.tsi.lv"""
     user = request.telegram_user
     telegram_id = user['id']
+    
+    # Check cache first
+    cached = get_cached_mytsi(telegram_id, 'all')
+    if cached and 'grades' in cached:
+        return jsonify(cached['grades'])
     
     creds = credentials.get_credentials(telegram_id)
     if not creds:
@@ -652,6 +766,11 @@ def get_mytsi_gpa():
     user = request.telegram_user
     telegram_id = user['id']
     
+    # Check cache first
+    cached = get_cached_mytsi(telegram_id, 'all')
+    if cached and 'gpa' in cached:
+        return jsonify(cached['gpa'])
+    
     creds = credentials.get_credentials(telegram_id)
     if not creds:
         return jsonify({'error': 'Not logged in'}), 401
@@ -685,6 +804,11 @@ def get_mytsi_attendance():
     user = request.telegram_user
     telegram_id = user['id']
     
+    # Check cache first
+    cached = get_cached_mytsi(telegram_id, 'all')
+    if cached and 'attendance' in cached:
+        return jsonify(cached['attendance'])
+    
     creds = credentials.get_credentials(telegram_id)
     if not creds:
         return jsonify({'error': 'Not logged in'}), 401
@@ -709,6 +833,11 @@ def get_mytsi_bills():
     """Get bills from my.tsi.lv"""
     user = request.telegram_user
     telegram_id = user['id']
+    
+    # Check cache first  
+    cached = get_cached_mytsi(telegram_id, 'all')
+    if cached and 'bills' in cached:
+        return jsonify(cached['bills'])
     
     creds = credentials.get_credentials(telegram_id)
     if not creds:
@@ -759,6 +888,11 @@ def get_mytsi_dashboard():
     """Get full dashboard info from my.tsi.lv"""
     user = request.telegram_user
     telegram_id = user['id']
+    
+    # Check cache first
+    cached = get_cached_mytsi(telegram_id, 'all')
+    if cached and 'dashboard' in cached:
+        return jsonify(cached['dashboard'])
     
     creds = credentials.get_credentials(telegram_id)
     if not creds:
