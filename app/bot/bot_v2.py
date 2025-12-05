@@ -268,6 +268,9 @@ class SmartCampusBotV2:
                 )
                 return ConversationHandler.END
         
+        # Mark that user is in login flow
+        context.user_data["in_login_flow"] = True
+        
         await update.message.reply_text(
             "🔐 **Авторизация в TSI**\n\n"
             "Введи свой студенческий логин (например: `st12345`):\n\n"
@@ -281,6 +284,9 @@ class SmartCampusBotV2:
         """Start login from callback button"""
         query = update.callback_query
         await query.answer()
+        
+        # Mark that user is in login flow
+        context.user_data["in_login_flow"] = True
         
         await query.edit_message_text(
             "🔐 **Авторизация в TSI**\n\n"
@@ -390,8 +396,9 @@ class SmartCampusBotV2:
                 "Попробуй позже: /login"
             )
         
-        # Clear temporary data
+        # Clear temporary data (including login flow flag)
         context.user_data.pop("tsi_username", None)
+        context.user_data.pop("in_login_flow", None)
         return ConversationHandler.END
     
     async def cmd_logout(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1546,6 +1553,12 @@ _"Что сегодня?" / "Напомни через час..."_
         text = update.message.text
         telegram_id = update.effective_user.id
         
+        # SKIP if user is in login conversation (waiting for username/password)
+        # This prevents AI from processing login credentials
+        if context.user_data.get("in_login_flow") or text == "🔐 Войти":
+            # User is in login flow or pressing login button - let ConversationHandler handle it
+            return
+        
         # Handle keyboard button presses
         if text == "📋 Menu":
             await self.cmd_menu(update, context)
@@ -1556,8 +1569,6 @@ _"Что сегодня?" / "Напомни через час..."_
         elif text == "📅 Завтра":
             await self.cmd_tomorrow(update, context)
             return
-        
-        # "🔐 Войти" is handled by ConversationHandler entry_points
         
         # Get user context
         user = self.db.get_user(telegram_id)
