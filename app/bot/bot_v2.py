@@ -1932,7 +1932,7 @@ _{comment}_
                 await update.message.reply_text("❌ Ошибка входа")
                 return
             
-            events = calendar.get_events(period['start'], period['end'])
+            events = calendar.get_events_range(period['start'], period['end'])
             calendar.close()
             
             if not events:
@@ -1997,7 +1997,7 @@ _{comment}_
                 await update.message.reply_text("❌ Ошибка входа")
                 return
             
-            events = calendar.get_events(period['start'], period['end'])
+            events = calendar.get_events_range(period['start'], period['end'])
             calendar.close()
             
             if not events:
@@ -2074,7 +2074,7 @@ _{comment}_
                 await update.message.reply_text("❌ Ошибка входа")
                 return
             
-            events = calendar.get_events(period['start'], period['end'])
+            events = calendar.get_events_range(period['start'], period['end'])
             calendar.close()
             
             if not events:

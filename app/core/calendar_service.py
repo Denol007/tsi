@@ -249,6 +249,36 @@ class CalendarService:
         
         return future_events[0] if future_events else None
     
+    def get_events_range(self, start_date: datetime, end_date: datetime, group: str = None) -> List[Dict[str, Any]]:
+        """Get events within date range"""
+        events = self.fetch_events(group=group)
+        
+        start_str = start_date.strftime("%Y-%m-%d")
+        end_str = end_date.strftime("%Y-%m-%d")
+        
+        result = []
+        for e in events:
+            event_date = e.get('date', '')
+            if start_str <= event_date <= end_str:
+                # Convert to datetime objects for the result
+                try:
+                    date_obj = datetime.strptime(event_date, "%Y-%m-%d")
+                    start_time = e.get('start_time', '09:00')
+                    end_time = e.get('end_time', '10:30')
+                    
+                    result.append({
+                        'subject': e.get('title', e.get('subject', 'Unknown')),
+                        'room': e.get('room', ''),
+                        'lecturer': e.get('lecturer', ''),
+                        'start': datetime.strptime(f"{event_date} {start_time}", "%Y-%m-%d %H:%M"),
+                        'end': datetime.strptime(f"{event_date} {end_time}", "%Y-%m-%d %H:%M"),
+                        'date': event_date
+                    })
+                except Exception:
+                    continue
+        
+        return sorted(result, key=lambda x: x['start'])
+    
     def search_events(
         self,
         query: str,
