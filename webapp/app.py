@@ -514,12 +514,12 @@ def create_note():
     
     data = request.get_json() or {}
     content = data.get('content', '').strip()
-    title = data.get('title', '').strip() or None
+    title = data.get('title', '').strip() or ''
     
     if not content:
         return jsonify({'success': False, 'error': 'Введи текст заметки'}), 400
     
-    note_id = db.add_note(telegram_id, content, title=title)
+    note_id = db.add_note(telegram_id, title, content)
     
     logger.info(f"User {telegram_id} created note {note_id}")
     return jsonify({'success': True, 'id': note_id})
