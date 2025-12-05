@@ -101,6 +101,9 @@ class SmartCampusBotV2:
     def __init__(self, token: str):
         self.token = token
         
+        # Timezone
+        self.tz = ZoneInfo(os.getenv('TIMEZONE', 'Europe/Riga'))
+        
         # Initialize services
         self.db = Database()
         self.credentials = CredentialManager()
