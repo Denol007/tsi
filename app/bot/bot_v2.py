@@ -88,12 +88,6 @@ def get_main_keyboard(is_logged_in: bool = False) -> ReplyKeyboardMarkup:
             [KeyboardButton("🔐 Войти")],
         ]
     
-    # Add webapp button if URL is configured
-    if webapp_url:
-        keyboard.append([
-            KeyboardButton("📱 Приложение", web_app=WebAppInfo(url=webapp_url))
-        ])
-    
     return ReplyKeyboardMarkup(
         keyboard, 
         resize_keyboard=True,  # Компактная клавиатура
