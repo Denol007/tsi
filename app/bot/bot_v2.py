@@ -32,6 +32,7 @@ from telegram.ext import (
 from app.core.calendar_service import CalendarService
 from app.core.database import Database
 from app.core.credentials import CredentialManager
+from app.core.schedule_monitor import ScheduleMonitor
 from app.ai.providers import AIManager, Message
 from app.ai.intent_classifier import IntentClassifier
 
@@ -110,6 +111,10 @@ class SmartCampusBotV2:
         
         # Start reminder checker
         self._reminder_task = None
+        
+        # Schedule monitor for cancellation notifications
+        self.schedule_monitor = ScheduleMonitor(self.db, self.credentials)
+        self._monitor_task = None
         
         # Build application
         self.application = Application.builder().token(token).build()
@@ -2485,8 +2490,12 @@ _Скажи "измени группу на XXXX" или "выключи уве�
             time_str = f"{event.get('start_time', '?')}-{event.get('end_time', '?')}"
             title = event.get('title', 'N/A')[:35]
             room = event.get('room', '-')
+            is_cancelled = event.get('is_cancelled', False)
             
-            lines.append(f"⏰ {time_str} | 📚 {title}")
+            if is_cancelled:
+                lines.append(f"⏰ {time_str} | ❌ ~~{title}~~ **ОТМЕНЕНО**")
+            else:
+                lines.append(f"⏰ {time_str} | 📚 {title}")
             lines.append(f"   🚪 Ауд. {room}")
         
         return "\n".join(lines)
@@ -2557,14 +2566,59 @@ _Скажи "измени группу на XXXX" или "выключи уве�
         """Run the bot"""
         logger.info("Starting Smart Campus Bot v2...")
         
+        # Set bot reference for schedule monitor
+        self.schedule_monitor.bot = self.application.bot
         
         # Add background job for checking reminders every minute
         job_queue = self.application.job_queue
         if job_queue:
             job_queue.run_repeating(self.check_reminders, interval=60, first=10)
             logger.info("Reminder checker started")
+            
+            # Add schedule monitor job (check every 5 minutes)
+            job_queue.run_repeating(self.check_schedule_changes, interval=300, first=60)
+            logger.info("Schedule monitor started")
         
         self.application.run_polling(allowed_updates=Update.ALL_TYPES)
+    
+    async def check_schedule_changes(self, context: ContextTypes.DEFAULT_TYPE):
+        """Background task to check for schedule changes"""
+        try:
+            # Get all unique groups from users
+            groups = self.schedule_monitor.get_monitored_groups()
+            logger.info(f"Checking schedule changes for {len(groups)} groups")
+            
+            for group in groups:
+                try:
+                    # Create a temporary calendar service for checking
+                    # Try to use any logged-in user's credentials
+                    users = self.db.get_users_by_group(group)
+                    calendar_service = None
+                    
+                    for user in users:
+                        telegram_id = user.get('telegram_id')
+                        if telegram_id:
+                            service = self._get_calendar_service(telegram_id)
+                            if service:
+                                calendar_service = service
+                                break
+                    
+                    if calendar_service:
+                        changes = await self.schedule_monitor.check_group(group, calendar_service)
+                        
+                        if changes.get('newly_cancelled'):
+                            logger.info(f"Found {len(changes['newly_cancelled'])} cancelled classes for {group}")
+                    else:
+                        logger.debug(f"No authenticated user found for group {group}")
+                        
+                except Exception as e:
+                    logger.error(f"Error checking group {group}: {e}")
+                
+                # Small delay between groups
+                await asyncio.sleep(1)
+                
+        except Exception as e:
+            logger.error(f"Schedule check error: {e}")
 
 
 def main():

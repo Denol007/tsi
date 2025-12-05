@@ -191,6 +191,17 @@ class CalendarService:
                         for date, date_events in events_by_date.items():
                             for event in date_events:
                                 event['date'] = date
+                                # Check for cancelled status (TSI uses 'status' or 'cancelled' field)
+                                # Common patterns: status="cancelled", cancelled=true, etc.
+                                is_cancelled = (
+                                    event.get('status', '').lower() in ['cancelled', 'canceled', 'отменено'] or
+                                    event.get('cancelled', False) == True or
+                                    event.get('canceled', False) == True or
+                                    'cancelled' in event.get('title', '').lower() or
+                                    'canceled' in event.get('title', '').lower() or
+                                    'отменен' in event.get('title', '').lower()
+                                )
+                                event['is_cancelled'] = is_cancelled
                                 events.append(event)
                         return events
                     except json.JSONDecodeError as e:

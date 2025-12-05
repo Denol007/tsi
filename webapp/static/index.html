@@ -309,6 +309,34 @@
             animation: pulse 2s infinite;
         }
 
+        /* Cancelled class styling */
+        .schedule-item.cancelled {
+            opacity: 0.6;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .schedule-item.cancelled .schedule-divider {
+            background: #ef4444;
+        }
+
+        .schedule-item.cancelled .schedule-subject {
+            text-decoration: line-through;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .cancelled-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(239, 68, 68, 0.2);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            color: #ef4444;
+            margin-left: 8px;
+            font-weight: 500;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -1279,14 +1307,14 @@
                     const data = await resp.json();
                     if (data.schedule && data.schedule.length > 0) {
                         container.innerHTML = data.schedule.slice(0, 3).map((item, idx) => `
-                            <div class="schedule-item ${item.is_current ? 'current' : ''}">
+                            <div class="schedule-item ${item.is_current ? 'current' : ''} ${item.is_cancelled ? 'cancelled' : ''}">
                                 <div class="schedule-time">
                                     <div class="time-start">${item.start_time}</div>
                                     <div class="time-end">${item.end_time}</div>
                                 </div>
                                 <div class="schedule-divider"></div>
                                 <div class="schedule-content">
-                                    <div class="schedule-subject">${item.subject}</div>
+                                    <div class="schedule-subject">${item.subject}${item.is_cancelled ? '<span class="cancelled-badge">❌ Отменено</span>' : ''}</div>
                                     <div class="schedule-details">${item.teacher || ''}</div>
                                     ${item.room ? `<span class="schedule-room">📍 ${item.room}</span>` : ''}
                                 </div>
@@ -1453,14 +1481,14 @@
                                 </div>`;
                                 
                                 grouped[date].forEach(item => {
-                                    html += `<div class="schedule-item ${item.is_current ? 'current' : ''}">
+                                    html += `<div class="schedule-item ${item.is_current ? 'current' : ''} ${item.is_cancelled ? 'cancelled' : ''}">
                                         <div class="schedule-time">
                                             <div class="time-start">${item.start_time}</div>
                                             <div class="time-end">${item.end_time}</div>
                                         </div>
                                         <div class="schedule-divider"></div>
                                         <div class="schedule-content">
-                                            <div class="schedule-subject">${item.subject}</div>
+                                            <div class="schedule-subject">${item.subject}${item.is_cancelled ? '<span class="cancelled-badge">❌ Отменено</span>' : ''}</div>
                                             <div class="schedule-details">${item.teacher || ''}</div>
                                             ${item.room ? `<span class="schedule-room">📍 ${item.room}</span>` : ''}
                                         </div>
@@ -1470,14 +1498,14 @@
                             container.innerHTML = html;
                         } else {
                             container.innerHTML = data.schedule.map(item => `
-                                <div class="schedule-item ${item.is_current ? 'current' : ''}">
+                                <div class="schedule-item ${item.is_current ? 'current' : ''} ${item.is_cancelled ? 'cancelled' : ''}">
                                     <div class="schedule-time">
                                         <div class="time-start">${item.start_time}</div>
                                         <div class="time-end">${item.end_time}</div>
                                     </div>
                                     <div class="schedule-divider"></div>
                                     <div class="schedule-content">
-                                        <div class="schedule-subject">${item.subject}</div>
+                                        <div class="schedule-subject">${item.subject}${item.is_cancelled ? '<span class="cancelled-badge">❌ Отменено</span>' : ''}</div>
                                         <div class="schedule-details">${item.teacher || ''}</div>
                                         ${item.room ? `<span class="schedule-room">📍 ${item.room}</span>` : ''}
                                     </div>

@@ -190,6 +190,27 @@ class Database:
             row = cursor.fetchone()
             return dict(row) if row else None
     
+    def get_all_users(self) -> List[Dict[str, Any]]:
+        """Get all users"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users")
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+    
+    def get_users_by_group(self, group_code: str) -> List[Dict[str, Any]]:
+        """Get all users with a specific group code"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM users WHERE group_code = ?",
+                (group_code.upper(),)
+            )
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+    
     def update_user(self, telegram_id: int, **kwargs) -> bool:
         """Update user data"""
         if not kwargs:

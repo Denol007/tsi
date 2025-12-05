@@ -319,7 +319,9 @@ def get_schedule(period):
                 'start_time': start_time,
                 'end_time': end_time,
                 'date': display_date,
-                'is_current': is_current
+                'is_current': is_current,
+                'is_cancelled': event.get('is_cancelled', False),
+                'status': event.get('status', '')
             })
         
         # Sort by date and time
@@ -406,7 +408,9 @@ def get_public_schedule(group_code, period):
                 'start_time': start_time,
                 'end_time': end_time,
                 'date': display_date,
-                'is_current': is_current
+                'is_current': is_current,
+                'is_cancelled': event.get('is_cancelled', False),
+                'status': event.get('status', '')
             })
         
         schedule.sort(key=lambda x: (x.get('date') or '', x['start_time']))
