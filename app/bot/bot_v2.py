@@ -147,11 +147,12 @@ class SmartCampusBotV2:
         """Setup all message handlers"""
         app = self.application
         
-        # Login conversation handler
+        # Login conversation handler - MUST BE FIRST with high priority (group 0)
         login_conv = ConversationHandler(
             entry_points=[
                 CommandHandler("login", self.cmd_login),
-                CallbackQueryHandler(self.cb_login_start, pattern="^login$")
+                CallbackQueryHandler(self.cb_login_start, pattern="^login$"),
+                MessageHandler(filters.Regex("^🔐 Войти$"), self.cmd_login)
             ],
             states={
                 STATE_AWAITING_USERNAME: [
@@ -165,9 +166,12 @@ class SmartCampusBotV2:
                 CommandHandler("cancel", self.cmd_cancel),
                 CallbackQueryHandler(self.cb_cancel, pattern="^cancel$")
             ],
-            conversation_timeout=300  # 5 minutes timeout
+            conversation_timeout=300,  # 5 minutes timeout
+            per_message=False,
+            per_chat=True,
+            per_user=True
         )
-        app.add_handler(login_conv)
+        app.add_handler(login_conv, group=0)
         
         # Command handlers
         app.add_handler(CommandHandler("start", self.cmd_start))
@@ -204,11 +208,11 @@ class SmartCampusBotV2:
         # Callback query handler for inline buttons
         app.add_handler(CallbackQueryHandler(self.handle_callback))
         
-        # Message handler for natural language (AI)
+        # Message handler for natural language (AI) - LOWER PRIORITY (group 1)
         app.add_handler(MessageHandler(
             filters.TEXT & ~filters.COMMAND,
             self.handle_message
-        ))
+        ), group=1)
         
         # Error handler
         app.add_error_handler(self.error_handler)
@@ -1552,16 +1556,8 @@ _"Что сегодня?" / "Напомни через час..."_
         elif text == "📅 Завтра":
             await self.cmd_tomorrow(update, context)
             return
-        elif text == "🔐 Войти":
-            # Check if already logged in
-            if self.credentials.has_credentials(telegram_id):
-                await update.message.reply_text(
-                    "✅ Ты уже авторизован!",
-                    reply_markup=get_main_keyboard(is_logged_in=True)
-                )
-                return
-            await self.cmd_login(update, context)
-            return
+        
+        # "🔐 Войти" is handled by ConversationHandler entry_points
         
         # Get user context
         user = self.db.get_user(telegram_id)
