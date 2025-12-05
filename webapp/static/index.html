@@ -1253,24 +1253,19 @@
             const loginBtn = document.getElementById('login-btn');
             const logoutBtn = document.getElementById('logout-btn');
             
-            if (userData.is_anonymous) {
-                // Anonymous user (no Telegram auth) - show login prompt
-                statusEl.classList.add('not-logged');
-                titleEl.textContent = 'Не авторизован';
-                subtitleEl.textContent = 'Войди через бота: /login';
-                loginBtn.style.display = 'none';
-                logoutBtn.style.display = 'none';
-            } else if (userData.is_logged_in) {
+            if (userData.is_logged_in) {
+                // User is logged in to TSI
                 statusEl.classList.remove('not-logged');
                 titleEl.textContent = `✓ ${userData.username || 'Авторизован'}`;
                 subtitleEl.textContent = 'Аккаунт TSI подключён';
                 loginBtn.style.display = 'none';
                 logoutBtn.style.display = 'flex';
             } else {
+                // User is not logged in - show login button
                 statusEl.classList.add('not-logged');
                 titleEl.textContent = 'Не авторизован';
-                subtitleEl.textContent = 'Войди через бота: /login';
-                loginBtn.style.display = 'none';
+                subtitleEl.textContent = 'Нажми чтобы войти';
+                loginBtn.style.display = 'flex';
                 logoutBtn.style.display = 'none';
             }
         }
