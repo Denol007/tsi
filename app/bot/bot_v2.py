@@ -239,14 +239,16 @@ class SmartCampusBotV2:
             BotCommand("start", "🚀 Начать работу"),
             BotCommand("menu", "📋 Главное меню"),
             BotCommand("login", "🔐 Войти в аккаунт TSI"),
-            BotCommand("today", "📅 Сегодня"),
-            BotCommand("tomorrow", "📅 Завтра"),
-            BotCommand("week", "📅 Неделя"),
-            BotCommand("grades", "📊 Оценки"),
+            BotCommand("today", "📅 Расписание на сегодня"),
+            BotCommand("tomorrow", "📅 Расписание на завтра"),
+            BotCommand("week", "📅 Расписание на неделю"),
+            BotCommand("grades", "📊 Мои оценки"),
             BotCommand("gpa", "📈 Средний балл"),
-            BotCommand("bills", "💰 Счета"),
-            BotCommand("remind", "⏰ Напоминание"),
-            BotCommand("notes", "📝 Заметки"),
+            BotCommand("attendance", "📋 Посещаемость"),
+            BotCommand("bills", "💰 Счета и оплаты"),
+            BotCommand("profile", "👤 Мой профиль"),
+            BotCommand("remind", "⏰ Создать напоминание"),
+            BotCommand("notes", "📝 Мои заметки"),
             BotCommand("help", "❓ Справка"),
         ]
         await self.application.bot.set_my_commands(commands)
@@ -593,38 +595,56 @@ _"Что сегодня?" / "Напомни через час..."_
     async def cmd_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /help command"""
         ai_status = "✅" if self.ai_manager.get_available_providers() else "❌"
-        providers = ", ".join(self.ai_manager.get_available_providers()) or "нет"
         
         help_text = f"""
-🤖 **Smart Campus Assistant - Справка**
+🎓 **Smart Campus Assistant**
+_Твой персональный помощник в TSI_
 
-**🔐 Аккаунт:**
-• `/login` - войти в аккаунт TSI
-• `/logout` - выйти из аккаунта
-• `/status` - статус авторизации
-
-**📅 Расписание:**
+━━━━━━━━━━━━━━━━━━━
+**📅 РАСПИСАНИЕ**
+━━━━━━━━━━━━━━━━━━━
 • `/today` - расписание на сегодня
-• `/tomorrow` - расписание на завтра
+• `/tomorrow` - расписание на завтра  
 • `/week` - расписание на неделю
 • `/next` - следующая пара
-
-**👥 Группа:**
-• `/setgroup [код]` - установить группу
-• `/mygroup` - показать группу
-
-**🔍 Поиск:**
-• `/search [запрос]` - поиск
 • `/freerooms` - свободные аудитории
 
-**🤖 AI Ассистент:** {ai_status}
-Провайдеры: {providers}
+━━━━━━━━━━━━━━━━━━━
+**🎓 MY.TSI.LV**
+━━━━━━━━━━━━━━━━━━━
+• `/grades` - твои оценки по семестрам
+• `/gpa` - средний балл (GPA)
+• `/attendance` - посещаемость
+• `/bills` - счета и оплаты
+• `/profile` - личные данные
 
-💡 **Просто напиши вопрос!**
-Примеры:
-• "Что у меня сегодня?"
+━━━━━━━━━━━━━━━━━━━
+**📝 ЗАМЕТКИ & НАПОМИНАНИЯ**
+━━━━━━━━━━━━━━━━━━━
+• `/notes` - список заметок
+• `/remind` - создать напоминание
+  _Пример: /remind через 30 мин сделать дз_
+
+━━━━━━━━━━━━━━━━━━━
+**🔐 АККАУНТ**
+━━━━━━━━━━━━━━━━━━━
+• `/login` - войти в TSI
+• `/logout` - выйти
+• `/setgroup` - установить группу
+• `/status` - статус аккаунта
+
+━━━━━━━━━━━━━━━━━━━
+**🤖 AI АССИСТЕНТ** {ai_status}
+━━━━━━━━━━━━━━━━━━━
+Просто напиши вопрос на любом языке!
+
+💬 _Примеры:_
+• "Что у меня завтра?"
+• "Покажи мой средний балл"
 • "Когда экзамен по математике?"
-• "Где проходит следующая пара?"
+• "Напомни через час"
+
+📱 **Mini App** - нажми кнопку меню!
         """
         
         await update.message.reply_text(help_text, parse_mode="Markdown")
