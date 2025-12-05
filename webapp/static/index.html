@@ -2902,6 +2902,11 @@
         let lecturerSearchTimeout = null;
         let currentLecturer = null;
         
+        function hideAllPages() {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        }
+        
         function showLecturers() {
             hideAllPages();
             document.getElementById('page-lecturers').classList.add('active');
@@ -2913,7 +2918,7 @@
             container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
             
             try {
-                const resp = await fetch('/api/my-lecturers', {
+                const resp = await fetch(`${API_BASE}/my-lecturers?init_data=${encodeURIComponent(tg.initData)}`, {
                     headers: getAuthHeaders()
                 });
                 const data = await resp.json();
@@ -2956,7 +2961,7 @@
             clearTimeout(lecturerSearchTimeout);
             lecturerSearchTimeout = setTimeout(async () => {
                 try {
-                    const resp = await fetch(`/api/lecturers/search?q=${encodeURIComponent(query)}`, {
+                    const resp = await fetch(`${API_BASE}/lecturers/search?q=${encodeURIComponent(query)}&init_data=${encodeURIComponent(tg.initData)}`, {
                         headers: getAuthHeaders()
                     });
                     const data = await resp.json();
@@ -3010,7 +3015,7 @@
             const todayContainer = document.getElementById('lecturer-today-schedule');
             
             try {
-                const resp = await fetch(`/api/lecturer/${encodeURIComponent(lecturerName)}/location`, {
+                const resp = await fetch(`${API_BASE}/lecturer/${encodeURIComponent(lecturerName)}/location?init_data=${encodeURIComponent(tg.initData)}`, {
                     headers: getAuthHeaders()
                 });
                 const data = await resp.json();
@@ -3078,7 +3083,7 @@
             const container = document.getElementById('lecturer-consultations');
             
             try {
-                const resp = await fetch(`/api/lecturer/${encodeURIComponent(lecturerName)}/consultations`, {
+                const resp = await fetch(`${API_BASE}/lecturer/${encodeURIComponent(lecturerName)}/consultations?init_data=${encodeURIComponent(tg.initData)}`, {
                     headers: getAuthHeaders()
                 });
                 const data = await resp.json();
@@ -3115,7 +3120,7 @@
                 
                 if (container.querySelector('.loading')) {
                     try {
-                        const resp = await fetch(`/api/lecturer/${encodeURIComponent(currentLecturer)}/schedule?days=30`, {
+                        const resp = await fetch(`${API_BASE}/lecturer/${encodeURIComponent(currentLecturer)}/schedule?days=30&init_data=${encodeURIComponent(tg.initData)}`, {
                             headers: getAuthHeaders()
                         });
                         const data = await resp.json();
