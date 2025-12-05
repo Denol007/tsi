@@ -214,6 +214,12 @@ class SmartCampusBotV2:
         app.add_handler(CommandHandler("remind", self.cmd_remind))
         app.add_handler(CommandHandler("reminders", self.cmd_reminders))
         
+        # My TSI commands (student portal)
+        app.add_handler(CommandHandler("grades", self.cmd_grades))
+        app.add_handler(CommandHandler("gpa", self.cmd_gpa))
+        app.add_handler(CommandHandler("bills", self.cmd_bills))
+        app.add_handler(CommandHandler("profile", self.cmd_profile))
+        
         # Callback query handler for inline buttons
         app.add_handler(CallbackQueryHandler(self.handle_callback))
         
@@ -235,6 +241,9 @@ class SmartCampusBotV2:
             BotCommand("today", "📅 Сегодня"),
             BotCommand("tomorrow", "📅 Завтра"),
             BotCommand("week", "📅 Неделя"),
+            BotCommand("grades", "📊 Оценки"),
+            BotCommand("gpa", "📈 Средний балл"),
+            BotCommand("bills", "💰 Счета"),
             BotCommand("remind", "⏰ Напоминание"),
             BotCommand("notes", "📝 Заметки"),
             BotCommand("help", "❓ Справка"),
@@ -1554,6 +1563,234 @@ _"Что сегодня?" / "Напомни через час..."_
         text += "\n_Для удаления нажми на команду_"
         
         await update.message.reply_text(text, parse_mode="Markdown")
+    
+    # ==================== My TSI Commands ====================
+    
+    async def cmd_grades(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Show student grades from my.tsi.lv"""
+        telegram_id = update.effective_user.id
+        
+        if not self.credentials.has_credentials(telegram_id):
+            await update.message.reply_text("🔐 Сначала войди: /login")
+            return
+        
+        await update.message.reply_text("📚 Загружаю оценки...")
+        
+        try:
+            from app.core.my_tsi_service import MyTSIService
+            
+            creds = self.credentials.get_credentials(telegram_id)
+            service = MyTSIService()
+            
+            if service.login(creds['username'], creds['password']):
+                grades = service.get_grades()
+                service.close()
+                
+                if not grades:
+                    await update.message.reply_text("📭 Оценки не найдены")
+                    return
+                
+                # Group by semester
+                semesters = {}
+                for g in grades:
+                    sem = g.get('semester', 'Без семестра')
+                    if sem not in semesters:
+                        semesters[sem] = []
+                    semesters[sem].append(g)
+                
+                text = "📊 **Твои оценки:**\n"
+                
+                # Show last 2 semesters
+                sem_keys = list(semesters.keys())[-2:]
+                for sem in sem_keys:
+                    text += f"\n**{sem}**\n"
+                    for g in semesters[sem]:
+                        grade = g.get('grade', '-')
+                        subject = g.get('subject', 'Неизвестно')[:35]
+                        credits = g.get('credits', '')
+                        
+                        # Add emoji based on grade
+                        if grade.isdigit():
+                            grade_int = int(grade)
+                            if grade_int >= 9:
+                                emoji = "🌟"
+                            elif grade_int >= 7:
+                                emoji = "✅"
+                            elif grade_int >= 5:
+                                emoji = "📝"
+                            else:
+                                emoji = "⚠️"
+                        else:
+                            emoji = "📝"
+                        
+                        text += f"{emoji} {grade} | {subject}"
+                        if credits:
+                            text += f" ({credits} кр.)"
+                        text += "\n"
+                
+                await update.message.reply_text(text, parse_mode="Markdown")
+            else:
+                await update.message.reply_text("❌ Ошибка входа в my.tsi.lv")
+                
+        except Exception as e:
+            logger.error(f"Grades error: {e}")
+            await update.message.reply_text(f"❌ Ошибка: {e}")
+    
+    async def cmd_gpa(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Show GPA (average grade)"""
+        telegram_id = update.effective_user.id
+        
+        if not self.credentials.has_credentials(telegram_id):
+            await update.message.reply_text("🔐 Сначала войди: /login")
+            return
+        
+        await update.message.reply_text("📊 Считаю средний балл...")
+        
+        try:
+            from app.core.my_tsi_service import MyTSIService
+            
+            creds = self.credentials.get_credentials(telegram_id)
+            service = MyTSIService()
+            
+            if service.login(creds['username'], creds['password']):
+                gpa = service.get_gpa()
+                grades = service.get_grades()
+                service.close()
+                
+                total_credits = sum(int(g.get('credits', 0)) for g in grades if g.get('credits', '').isdigit())
+                
+                # Emoji based on GPA
+                if gpa >= 9:
+                    emoji = "🏆"
+                    comment = "Отлично!"
+                elif gpa >= 8:
+                    emoji = "🌟"
+                    comment = "Очень хорошо!"
+                elif gpa >= 7:
+                    emoji = "✅"
+                    comment = "Хорошо"
+                elif gpa >= 5:
+                    emoji = "📝"
+                    comment = "Нормально"
+                else:
+                    emoji = "📚"
+                    comment = "Есть над чем поработать"
+                
+                text = f"""
+{emoji} **Средний балл (GPA): {gpa}**
+
+📚 Всего предметов: {len(grades)}
+📊 Всего кредитов: {total_credits}
+
+_{comment}_
+"""
+                await update.message.reply_text(text, parse_mode="Markdown")
+            else:
+                await update.message.reply_text("❌ Ошибка входа в my.tsi.lv")
+                
+        except Exception as e:
+            logger.error(f"GPA error: {e}")
+            await update.message.reply_text(f"❌ Ошибка: {e}")
+    
+    async def cmd_bills(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Show bills and payments from my.tsi.lv"""
+        telegram_id = update.effective_user.id
+        
+        if not self.credentials.has_credentials(telegram_id):
+            await update.message.reply_text("🔐 Сначала войди: /login")
+            return
+        
+        await update.message.reply_text("💰 Загружаю счета...")
+        
+        try:
+            from app.core.my_tsi_service import MyTSIService
+            
+            creds = self.credentials.get_credentials(telegram_id)
+            service = MyTSIService()
+            
+            if service.login(creds['username'], creds['password']):
+                bills_data = service.get_bills()
+                service.close()
+                
+                if 'error' in bills_data:
+                    await update.message.reply_text(f"❌ {bills_data['error']}")
+                    return
+                
+                bills = bills_data.get('bills', [])
+                
+                text = "💰 **Счета и оплаты:**\n\n"
+                text += f"📊 {bills_data.get('summary', 'Нет данных')}\n\n"
+                
+                # Show unpaid bills first
+                unpaid = [b for b in bills if not b['paid'] and b['amount'] > 0]
+                if unpaid:
+                    text += "⏳ **К оплате:**\n"
+                    for bill in unpaid[-5:]:
+                        text += f"• {bill['date']}: {bill['service'][:30]}\n"
+                        text += f"  💵 {bill['amount']:.2f} EUR\n"
+                
+                # Recent payments
+                paid = [b for b in bills if b['paid']][-5:]
+                if paid:
+                    text += "\n✅ **Последние оплаты:**\n"
+                    for bill in reversed(paid):
+                        text += f"• {bill['payment_date'] or bill['date']}: {abs(bill['amount']):.2f} EUR\n"
+                
+                await update.message.reply_text(text, parse_mode="Markdown")
+            else:
+                await update.message.reply_text("❌ Ошибка входа в my.tsi.lv")
+                
+        except Exception as e:
+            logger.error(f"Bills error: {e}")
+            await update.message.reply_text(f"❌ Ошибка: {e}")
+    
+    async def cmd_profile(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Show student profile from my.tsi.lv"""
+        telegram_id = update.effective_user.id
+        
+        if not self.credentials.has_credentials(telegram_id):
+            await update.message.reply_text("🔐 Сначала войди: /login")
+            return
+        
+        await update.message.reply_text("👤 Загружаю профиль...")
+        
+        try:
+            from app.core.my_tsi_service import MyTSIService
+            
+            creds = self.credentials.get_credentials(telegram_id)
+            service = MyTSIService()
+            
+            if service.login(creds['username'], creds['password']):
+                profile = service.get_profile()
+                service.close()
+                
+                if 'error' in profile:
+                    await update.message.reply_text(f"❌ {profile['error']}")
+                    return
+                
+                text = f"""
+👤 **Профиль студента**
+
+📛 **{profile.get('name', 'Неизвестно')}**
+🆔 Код: {profile.get('student_code', '-')}
+📊 Статус: {profile.get('status', '-')}
+
+🎓 **Обучение:**
+• Факультет: {profile.get('faculty', '-')}
+• Программа: {profile.get('programme', '-')}
+• Специализация: {profile.get('specialization', '-')}
+• Уровень: {profile.get('level', '-')}
+• Курс: {profile.get('year', '-')}
+• Группа: {profile.get('group', '-')}
+• Форма: {profile.get('study_mode', '-')}
+"""
+                await update.message.reply_text(text, parse_mode="Markdown")
+            else:
+                await update.message.reply_text("❌ Ошибка входа в my.tsi.lv")
+                
+        except Exception as e:
+            logger.error(f"Profile error: {e}")
+            await update.message.reply_text(f"❌ Ошибка: {e}")
     
     # ==================== AI Message Handler ====================
     
