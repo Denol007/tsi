@@ -1932,7 +1932,11 @@ _{comment}_
                 await update.message.reply_text("❌ Ошибка входа")
                 return
             
-            events = calendar.get_events_range(period['start'], period['end'])
+            # Get user's group
+            user = self.db.get_user(telegram_id)
+            group = user.get('group_code') if user else None
+            
+            events = calendar.get_events_range(period['start'], period['end'], group=group)
             calendar.close()
             
             if not events:
@@ -1997,7 +2001,11 @@ _{comment}_
                 await update.message.reply_text("❌ Ошибка входа")
                 return
             
-            events = calendar.get_events_range(period['start'], period['end'])
+            # Get user's group
+            user = self.db.get_user(telegram_id)
+            group = user.get('group_code') if user else None
+            
+            events = calendar.get_events_range(period['start'], period['end'], group=group)
             calendar.close()
             
             if not events:
