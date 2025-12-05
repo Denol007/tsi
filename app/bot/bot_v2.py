@@ -226,6 +226,12 @@ class SmartCampusBotV2:
         app.add_handler(CommandHandler("profile", self.cmd_profile))
         app.add_handler(CommandHandler("attendance", self.cmd_attendance))
         
+        # Lecturer commands
+        app.add_handler(CommandHandler("find", self.cmd_find))
+        app.add_handler(CommandHandler("lecturer", self.cmd_find))
+        app.add_handler(CommandHandler("consult", self.cmd_consult))
+        app.add_handler(CommandHandler("consultations", self.cmd_consult))
+        
         # Callback query handler for inline buttons
         app.add_handler(CallbackQueryHandler(self.handle_callback))
         
@@ -760,6 +766,16 @@ _Твой персональный помощник в TSI_
         query = " ".join(context.args) if context.args else ""
         await self.cmd_free_time(update, context, query)
     
+    async def cmd_find(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /find command - find lecturer"""
+        lecturer_name = " ".join(context.args) if context.args else ""
+        await self.cmd_find_lecturer(update, context, lecturer_name)
+    
+    async def cmd_consult(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /consult command - find lecturer consultations"""
+        lecturer_name = " ".join(context.args) if context.args else ""
+        await self.cmd_lecturer_consultations(update, context, lecturer_name)
+
     async def cmd_next(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /next command"""
         if not await self._check_auth(update):
@@ -2117,6 +2133,253 @@ _{comment}_
             logger.error(f"Workday hours error: {e}")
             await update.message.reply_text(f"❌ Ошибка: {e}")
     
+    # ==================== LECTURER COMMANDS ====================
+    
+    async def cmd_find_lecturer(self, update: Update, context: ContextTypes.DEFAULT_TYPE, lecturer_name: str = ""):
+        """Find a lecturer and show their current location"""
+        telegram_id = update.effective_user.id
+        
+        if not self.credentials.has_credentials(telegram_id):
+            await update.message.reply_text("🔐 Сначала войди: /login")
+            return
+        
+        if not lecturer_name.strip():
+            # Show list of user's lecturers
+            await self._show_my_lecturers(update, context)
+            return
+        
+        await update.message.reply_text(f"🔍 Ищу преподавателя: {lecturer_name}...")
+        
+        try:
+            creds = self.credentials.get_credentials(telegram_id)
+            calendar = CalendarService()
+            
+            if not calendar.login(creds['username'], creds['password']):
+                await update.message.reply_text("❌ Ошибка входа")
+                return
+            
+            # Search for lecturer
+            matches = calendar.search_lecturers(lecturer_name)
+            
+            if not matches:
+                await update.message.reply_text(f"❌ Преподаватель '{lecturer_name}' не найден")
+                calendar.close()
+                return
+            
+            # If multiple matches, show list
+            if len(matches) > 1 and lecturer_name.lower() not in [m.lower() for m in matches]:
+                text = "🔍 **Найдено несколько преподавателей:**\n\n"
+                for m in matches[:10]:
+                    text += f"• {m}\n"
+                text += f"\n💡 Уточни имя для поиска"
+                await update.message.reply_text(text, parse_mode="Markdown")
+                calendar.close()
+                return
+            
+            # Use first match or exact match
+            lecturer = matches[0]
+            
+            # Get location
+            location = calendar.get_lecturer_current_location(lecturer)
+            next_class = calendar.get_lecturer_next_class(lecturer)
+            today_schedule = calendar.get_lecturer_today_schedule(lecturer)
+            calendar.close()
+            
+            text = f"👨‍🏫 **{lecturer}**\n\n"
+            
+            # Current location
+            if location:
+                text += f"📍 **Сейчас на паре:**\n"
+                text += f"🚪 Аудитория: **{location['room']}**\n"
+                text += f"📚 {location['subject']}\n"
+                text += f"⏰ {location['start_time']} — {location['end_time']}\n"
+                if location.get('group'):
+                    text += f"👥 Группа: {location['group']}\n"
+                text += "\n"
+            else:
+                text += "✅ **Сейчас свободен**\n\n"
+            
+            # Next class
+            if next_class:
+                date_str = next_class.get('date', '')
+                if date_str == datetime.now().strftime('%Y-%m-%d'):
+                    date_label = "Сегодня"
+                else:
+                    date_label = date_str
+                text += f"⏭ **Следующая пара:**\n"
+                text += f"📅 {date_label} в {next_class.get('start_time', '')}\n"
+                text += f"📚 {next_class.get('title', next_class.get('subject', ''))}\n"
+                text += f"🚪 Ауд. {next_class.get('room', '')}\n\n"
+            
+            # Today's schedule
+            if today_schedule:
+                text += f"📅 **Сегодня ({len(today_schedule)} пар):**\n"
+                for e in today_schedule[:5]:
+                    cancelled = "❌ ~~" if e.get('is_cancelled') else ""
+                    cancelled_end = "~~" if e.get('is_cancelled') else ""
+                    text += f"  • {e.get('start_time', '')} {cancelled}{e.get('title', e.get('subject', ''))[:25]}{cancelled_end}\n"
+            
+            await update.message.reply_text(text, parse_mode="Markdown")
+            
+        except Exception as e:
+            logger.error(f"Find lecturer error: {e}")
+            await update.message.reply_text(f"❌ Ошибка: {e}")
+    
+    async def cmd_lecturer_consultations(self, update: Update, context: ContextTypes.DEFAULT_TYPE, lecturer_name: str = ""):
+        """Show consultation hours for a lecturer"""
+        telegram_id = update.effective_user.id
+        
+        if not self.credentials.has_credentials(telegram_id):
+            await update.message.reply_text("🔐 Сначала войди: /login")
+            return
+        
+        if not lecturer_name.strip():
+            await update.message.reply_text("❓ Укажи имя преподавателя: `/consult Иванов`", parse_mode="Markdown")
+            return
+        
+        await update.message.reply_text(f"🔍 Ищу консультации: {lecturer_name}...")
+        
+        try:
+            creds = self.credentials.get_credentials(telegram_id)
+            calendar = CalendarService()
+            
+            if not calendar.login(creds['username'], creds['password']):
+                await update.message.reply_text("❌ Ошибка входа")
+                return
+            
+            # Search for lecturer
+            matches = calendar.search_lecturers(lecturer_name)
+            
+            if not matches:
+                await update.message.reply_text(f"❌ Преподаватель '{lecturer_name}' не найден")
+                calendar.close()
+                return
+            
+            lecturer = matches[0]
+            consultations = calendar.get_lecturer_consultations(lecturer)
+            calendar.close()
+            
+            if not consultations:
+                await update.message.reply_text(f"📭 У **{lecturer}** нет запланированных консультаций", parse_mode="Markdown")
+                return
+            
+            text = f"💬 **Консультации: {lecturer}**\n\n"
+            
+            for c in consultations[:10]:
+                date = c.get('date', '')
+                text += f"📅 **{date}** в {c.get('start_time', '')} — {c.get('end_time', '')}\n"
+                text += f"   🚪 Ауд. {c.get('room', 'N/A')}\n\n"
+            
+            if len(consultations) > 10:
+                text += f"... и ещё {len(consultations) - 10} консультаций"
+            
+            await update.message.reply_text(text, parse_mode="Markdown")
+            
+        except Exception as e:
+            logger.error(f"Lecturer consultations error: {e}")
+            await update.message.reply_text(f"❌ Ошибка: {e}")
+    
+    async def _show_my_lecturers(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Show list of user's lecturers from current schedule"""
+        telegram_id = update.effective_user.id
+        
+        try:
+            creds = self.credentials.get_credentials(telegram_id)
+            calendar = CalendarService()
+            
+            if not calendar.login(creds['username'], creds['password']):
+                await update.message.reply_text("❌ Ошибка входа")
+                return
+            
+            user = self.db.get_user(telegram_id)
+            group = user.get('group_code') if user else None
+            
+            if not group:
+                await update.message.reply_text("❓ Сначала установи группу: /group")
+                calendar.close()
+                return
+            
+            events = calendar.fetch_events(group=group)
+            calendar.close()
+            
+            # Extract unique lecturers with their subjects
+            lecturer_subjects = {}
+            for event in events:
+                lecturer = event.get('lecturer', '').strip()
+                subject = event.get('title', event.get('subject', '')).strip()
+                
+                if lecturer and subject:
+                    if lecturer not in lecturer_subjects:
+                        lecturer_subjects[lecturer] = set()
+                    lecturer_subjects[lecturer].add(subject)
+            
+            if not lecturer_subjects:
+                await update.message.reply_text("📭 Преподаватели не найдены")
+                return
+            
+            text = "👨‍🏫 **Твои преподаватели:**\n\n"
+            
+            for lecturer, subjects in sorted(lecturer_subjects.items()):
+                subjects_str = ", ".join(list(subjects)[:2])
+                if len(subjects) > 2:
+                    subjects_str += "..."
+                text += f"• **{lecturer}**\n  📚 {subjects_str}\n\n"
+            
+            text += f"\n💡 Чтобы найти преподавателя: `/find Фамилия`"
+            
+            await update.message.reply_text(text, parse_mode="Markdown")
+            
+        except Exception as e:
+            logger.error(f"Show my lecturers error: {e}")
+            await update.message.reply_text(f"❌ Ошибка: {e}")
+
+    def _extract_lecturer_name(self, text: str) -> str:
+        """Extract lecturer name from natural language query"""
+        import re
+        
+        # Remove common words
+        stop_words = [
+            'найди', 'найти', 'где', 'сейчас', 'преподаватель', 'преподавателя', 'препод', 
+            'препода', 'лектор', 'лектора', 'консультация', 'консультации', 'расписание',
+            'пары', 'у', 'в', 'какой', 'аудитории', 'когда', 'какие', 'schedule', 'find',
+            'lecturer', 'teacher', 'мои', 'преподаватели', 'мой'
+        ]
+        
+        # Find capitalized words (potential names)
+        # Russian names
+        ru_names = re.findall(r'\b[А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+)*\b', text)
+        # English names
+        en_names = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', text)
+        
+        names = ru_names + en_names
+        
+        # Filter out stop words from names
+        filtered = []
+        for name in names:
+            parts = name.split()
+            clean_parts = [p for p in parts if p.lower() not in stop_words]
+            if clean_parts:
+                filtered.append(" ".join(clean_parts))
+        
+        if filtered:
+            return filtered[0]
+        
+        # Fallback: try to extract any word after "найди", "где", etc.
+        patterns = [
+            r'(?:найди|найти|где)\s+(\w+)',
+            r'(?:консультаци\w*)\s+(?:у\s+)?(\w+)',
+            r'(?:расписание)\s+(?:у\s+)?(\w+)',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text.lower())
+            if match:
+                word = match.group(1)
+                if word not in stop_words:
+                    return word
+        
+        return ""
+
     def _extract_period(self, query: str) -> dict:
         """Extract time period from query text"""
         from dateutil.relativedelta import relativedelta
@@ -2277,6 +2540,19 @@ _{comment}_
             return
         elif intent == "workday_hours" and confidence >= 0.5:
             await self.cmd_workday_hours(update, context, text)
+            return
+        elif intent == "find_lecturer" and confidence >= 0.5:
+            # Extract lecturer name from text
+            lecturer_name = self._extract_lecturer_name(text)
+            await self.cmd_find_lecturer(update, context, lecturer_name)
+            return
+        elif intent == "lecturer_consultations" and confidence >= 0.5:
+            lecturer_name = self._extract_lecturer_name(text)
+            await self.cmd_lecturer_consultations(update, context, lecturer_name)
+            return
+        elif intent == "lecturer_schedule" and confidence >= 0.5:
+            lecturer_name = self._extract_lecturer_name(text)
+            await self.cmd_find_lecturer(update, context, lecturer_name)
             return
         
         # Show typing indicator

@@ -330,6 +330,109 @@ class CalendarService:
         free_rooms = all_rooms - occupied_rooms
         return sorted(list(free_rooms))
     
+    # ==================== LECTURER METHODS ====================
+    
+    def get_all_lecturers(self, group: str = None) -> List[str]:
+        """Get list of all unique lecturers from calendar events"""
+        events = self.fetch_events(group=group)
+        lecturers = set()
+        for event in events:
+            lecturer = event.get('lecturer', '').strip()
+            if lecturer:
+                lecturers.add(lecturer)
+        return sorted(list(lecturers))
+    
+    def search_lecturers(self, query: str, group: str = None) -> List[str]:
+        """Search lecturers by partial name match"""
+        all_lecturers = self.get_all_lecturers(group=group)
+        query_lower = query.lower()
+        
+        # Exact start match first, then contains
+        exact_start = [l for l in all_lecturers if l.lower().startswith(query_lower)]
+        contains = [l for l in all_lecturers if query_lower in l.lower() and l not in exact_start]
+        
+        return exact_start + contains
+    
+    def get_lecturer_schedule(self, lecturer: str, from_date: datetime = None, to_date: datetime = None) -> List[Dict[str, Any]]:
+        """Get schedule for a specific lecturer"""
+        if from_date is None:
+            from_date = datetime.now()
+        if to_date is None:
+            to_date = from_date + timedelta(days=30)
+        
+        events = self.fetch_events(lecturer=lecturer, from_date=from_date, to_date=to_date)
+        
+        # Sort by date and time
+        return sorted(events, key=lambda e: (e.get('date', ''), e.get('start_time', '')))
+    
+    def get_lecturer_current_location(self, lecturer: str) -> Optional[Dict[str, Any]]:
+        """Find where a lecturer is right now"""
+        now = datetime.now()
+        today = now.strftime("%Y-%m-%d")
+        current_time = now.strftime("%H:%M")
+        
+        events = self.fetch_events(lecturer=lecturer)
+        
+        for event in events:
+            if event.get('date') == today:
+                start = event.get('start_time', '00:00')
+                end = event.get('end_time', '23:59')
+                if start <= current_time <= end:
+                    return {
+                        'room': event.get('room', 'Unknown'),
+                        'subject': event.get('title', event.get('subject', 'Unknown')),
+                        'group': event.get('group', ''),
+                        'start_time': start,
+                        'end_time': end,
+                        'status': 'in_class'
+                    }
+        
+        return None
+    
+    def get_lecturer_next_class(self, lecturer: str) -> Optional[Dict[str, Any]]:
+        """Get next class for a lecturer"""
+        now = datetime.now()
+        today = now.strftime("%Y-%m-%d")
+        current_time = now.strftime("%H:%M")
+        
+        events = self.fetch_events(lecturer=lecturer)
+        future_events = []
+        
+        for event in events:
+            event_date = event.get('date', '')
+            event_time = event.get('start_time', '00:00')
+            
+            if event_date > today or (event_date == today and event_time > current_time):
+                future_events.append(event)
+        
+        future_events.sort(key=lambda e: (e.get('date', ''), e.get('start_time', '')))
+        
+        return future_events[0] if future_events else None
+    
+    def get_lecturer_consultations(self, lecturer: str) -> List[Dict[str, Any]]:
+        """Get consultation hours for a lecturer (type = consultation/konsultācija)"""
+        events = self.fetch_events(lecturer=lecturer)
+        
+        consultations = []
+        for event in events:
+            title = event.get('title', '').lower()
+            event_type = event.get('type', '').lower()
+            
+            # Check if it's a consultation
+            if any(word in title for word in ['консультац', 'consultation', 'konsultāc']) or \
+               any(word in event_type for word in ['консультац', 'consultation', 'konsultāc']):
+                consultations.append(event)
+        
+        return sorted(consultations, key=lambda e: (e.get('date', ''), e.get('start_time', '')))
+    
+    def get_lecturer_today_schedule(self, lecturer: str) -> List[Dict[str, Any]]:
+        """Get today's schedule for a lecturer"""
+        today = datetime.now().strftime("%Y-%m-%d")
+        events = self.fetch_events(lecturer=lecturer)
+        
+        today_events = [e for e in events if e.get('date') == today]
+        return sorted(today_events, key=lambda e: e.get('start_time', ''))
+
     def clear_cache(self):
         """Clear the events cache"""
         self._events_cache.clear()

@@ -984,6 +984,208 @@ def get_mytsi_dashboard():
         logger.error(f"MyTSI dashboard error: {e}")
         return jsonify({'error': str(e)}), 500
 
+# ==================== LECTURER API ====================
+
+@app.route('/api/lecturers')
+@require_auth
+def get_lecturers():
+    """Get list of all lecturers, optionally filtered by user's group"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    creds = credentials.get_credentials(telegram_id)
+    if not creds:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        calendar = CalendarService()
+        if not calendar.login(creds['username'], creds['password']):
+            return jsonify({'error': 'Ошибка входа'}), 401
+        
+        # Get user's group for filtering
+        db_user = db.get_user(telegram_id)
+        group = db_user.get('group_code') if db_user else None
+        
+        lecturers = calendar.get_all_lecturers(group=group)
+        calendar.close()
+        
+        return jsonify({'lecturers': lecturers})
+        
+    except Exception as e:
+        logger.error(f"Get lecturers error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/lecturers/search')
+@require_auth
+def search_lecturers():
+    """Search lecturers by partial name"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    query = request.args.get('q', '').strip()
+    if len(query) < 2:
+        return jsonify({'lecturers': []})
+    
+    creds = credentials.get_credentials(telegram_id)
+    if not creds:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        calendar = CalendarService()
+        if not calendar.login(creds['username'], creds['password']):
+            return jsonify({'error': 'Ошибка входа'}), 401
+        
+        db_user = db.get_user(telegram_id)
+        group = db_user.get('group_code') if db_user else None
+        
+        lecturers = calendar.search_lecturers(query, group=group)
+        calendar.close()
+        
+        return jsonify({'lecturers': lecturers[:10]})  # Limit to 10 results
+        
+    except Exception as e:
+        logger.error(f"Search lecturers error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/lecturer/<lecturer_name>/location')
+@require_auth
+def get_lecturer_location(lecturer_name: str):
+    """Get current location of a lecturer"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    creds = credentials.get_credentials(telegram_id)
+    if not creds:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        calendar = CalendarService()
+        if not calendar.login(creds['username'], creds['password']):
+            return jsonify({'error': 'Ошибка входа'}), 401
+        
+        location = calendar.get_lecturer_current_location(lecturer_name)
+        next_class = calendar.get_lecturer_next_class(lecturer_name)
+        today_schedule = calendar.get_lecturer_today_schedule(lecturer_name)
+        calendar.close()
+        
+        return jsonify({
+            'current': location,
+            'next': next_class,
+            'today': today_schedule
+        })
+        
+    except Exception as e:
+        logger.error(f"Lecturer location error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/lecturer/<lecturer_name>/schedule')
+@require_auth
+def get_lecturer_schedule(lecturer_name: str):
+    """Get full schedule for a lecturer"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    days = int(request.args.get('days', 30))
+    
+    creds = credentials.get_credentials(telegram_id)
+    if not creds:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        calendar = CalendarService()
+        if not calendar.login(creds['username'], creds['password']):
+            return jsonify({'error': 'Ошибка входа'}), 401
+        
+        from datetime import datetime, timedelta
+        from_date = datetime.now()
+        to_date = from_date + timedelta(days=days)
+        
+        schedule = calendar.get_lecturer_schedule(lecturer_name, from_date, to_date)
+        calendar.close()
+        
+        return jsonify({'schedule': schedule})
+        
+    except Exception as e:
+        logger.error(f"Lecturer schedule error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/lecturer/<lecturer_name>/consultations')
+@require_auth
+def get_lecturer_consultations(lecturer_name: str):
+    """Get consultation hours for a lecturer"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    creds = credentials.get_credentials(telegram_id)
+    if not creds:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        calendar = CalendarService()
+        if not calendar.login(creds['username'], creds['password']):
+            return jsonify({'error': 'Ошибка входа'}), 401
+        
+        consultations = calendar.get_lecturer_consultations(lecturer_name)
+        calendar.close()
+        
+        return jsonify({'consultations': consultations})
+        
+    except Exception as e:
+        logger.error(f"Lecturer consultations error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/my-lecturers')
+@require_auth
+def get_my_lecturers():
+    """Get lecturers teaching current user's courses (from schedule)"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    creds = credentials.get_credentials(telegram_id)
+    if not creds:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        calendar = CalendarService()
+        if not calendar.login(creds['username'], creds['password']):
+            return jsonify({'error': 'Ошибка входа'}), 401
+        
+        db_user = db.get_user(telegram_id)
+        group = db_user.get('group_code') if db_user else None
+        
+        if not group:
+            calendar.close()
+            return jsonify({'error': 'Группа не установлена'}), 400
+        
+        # Get events for user's group
+        events = calendar.fetch_events(group=group)
+        calendar.close()
+        
+        # Extract unique lecturer-subject pairs
+        lecturer_subjects = {}
+        for event in events:
+            lecturer = event.get('lecturer', '').strip()
+            subject = event.get('title', event.get('subject', '')).strip()
+            
+            if lecturer and subject:
+                if lecturer not in lecturer_subjects:
+                    lecturer_subjects[lecturer] = set()
+                lecturer_subjects[lecturer].add(subject)
+        
+        # Format result
+        result = []
+        for lecturer, subjects in sorted(lecturer_subjects.items()):
+            result.append({
+                'name': lecturer,
+                'subjects': sorted(list(subjects))
+            })
+        
+        return jsonify({'lecturers': result})
+        
+    except Exception as e:
+        logger.error(f"My lecturers error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # ==================== Main ====================
 
 def create_app():

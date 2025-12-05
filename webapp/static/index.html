@@ -640,6 +640,165 @@
             border-color: var(--accent);
         }
 
+        /* Search styles */
+        .search-container {
+            margin-bottom: 16px;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+        }
+
+        .search-input {
+            padding-left: 16px;
+            padding-right: 40px;
+        }
+
+        .search-autocomplete {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--tg-theme-secondary-bg-color);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            margin-top: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+
+        .search-autocomplete.active {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--card-border);
+            transition: background 0.2s;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item:hover, .autocomplete-item:active {
+            background: var(--card-bg);
+        }
+
+        .autocomplete-item .name {
+            font-weight: 500;
+        }
+
+        .autocomplete-item .subjects {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+            margin-top: 2px;
+        }
+
+        /* Lecturer card styles */
+        .lecturer-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--card-border);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .lecturer-item:last-child {
+            border-bottom: none;
+        }
+
+        .lecturer-item:hover, .lecturer-item:active {
+            background: var(--card-bg);
+        }
+
+        .lecturer-avatar {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--accent) 0%, #6366f1 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            margin-right: 12px;
+        }
+
+        .lecturer-info {
+            flex: 1;
+        }
+
+        .lecturer-name {
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .lecturer-subjects {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .lecturer-arrow {
+            color: var(--tg-theme-hint-color);
+        }
+
+        /* Lecturer detail page */
+        .location-status {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+
+        .location-status.in-class {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .location-status.free {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .location-status .status-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .location-status .status-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .location-status .status-details {
+            font-size: 13px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .location-status .room-big {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .card-header.clickable {
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .expand-icon {
+            transition: transform 0.3s;
+        }
+
+        .schedule-card.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+
         .btn {
             width: 100%;
             padding: 14px 20px;
@@ -1156,13 +1315,13 @@
                 <div class="action-icon">🎓</div>
                 <span>My TSI</span>
             </div>
-            <div class="action-btn" onclick="showNotes()">
-                <div class="action-icon">📝</div>
-                <span>Заметки</span>
+            <div class="action-btn" onclick="showLecturers()">
+                <div class="action-icon">👨‍🏫</div>
+                <span>Преподы</span>
             </div>
             <div class="action-btn" onclick="askAI()">
                 <div class="action-icon">🤖</div>
-                <span>AI Помощник</span>
+                <span>AI</span>
             </div>
         </div>
 
@@ -1355,6 +1514,90 @@
             
             <div class="schedule-card" id="mytsi-profile-card">
                 <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lecturers Page -->
+    <div id="page-lecturers" class="page">
+        <div class="section">
+            <div class="section-header">
+                <span class="section-title">👨‍🏫 Преподаватели</span>
+            </div>
+            
+            <!-- Search Box -->
+            <div class="search-container">
+                <div class="search-input-wrapper">
+                    <input type="text" 
+                           class="form-input search-input" 
+                           id="lecturer-search" 
+                           placeholder="🔍 Поиск по имени..."
+                           oninput="searchLecturers(this.value)"
+                           autocomplete="off">
+                    <div class="search-autocomplete" id="lecturer-autocomplete"></div>
+                </div>
+            </div>
+            
+            <!-- My Lecturers (from current semester) -->
+            <div class="schedule-card" id="my-lecturers-card">
+                <div class="card-header">
+                    <span class="card-title">📚 Мои преподаватели</span>
+                    <span class="card-subtitle">Преподаватели твоих предметов</span>
+                </div>
+                <div id="my-lecturers-list">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lecturer Detail Page -->
+    <div id="page-lecturer-detail" class="page">
+        <div class="section">
+            <div class="section-header">
+                <span class="section-title" id="lecturer-detail-name">👨‍🏫 Преподаватель</span>
+                <a href="#" class="section-action" onclick="showLecturers()">← Назад</a>
+            </div>
+            
+            <!-- Current Location Card -->
+            <div class="schedule-card" id="lecturer-location-card">
+                <div class="card-header">
+                    <span class="card-title">📍 Где сейчас?</span>
+                </div>
+                <div id="lecturer-location">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+            
+            <!-- Today's Schedule -->
+            <div class="schedule-card" id="lecturer-today-card">
+                <div class="card-header">
+                    <span class="card-title">📅 Расписание на сегодня</span>
+                </div>
+                <div id="lecturer-today-schedule">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+            
+            <!-- Consultations -->
+            <div class="schedule-card" id="lecturer-consultations-card">
+                <div class="card-header">
+                    <span class="card-title">💬 Консультации</span>
+                </div>
+                <div id="lecturer-consultations">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+            
+            <!-- Full Schedule -->
+            <div class="schedule-card collapsed" id="lecturer-schedule-card">
+                <div class="card-header clickable" onclick="toggleLecturerSchedule()">
+                    <span class="card-title">📆 Полное расписание</span>
+                    <span class="expand-icon">▼</span>
+                </div>
+                <div id="lecturer-full-schedule" style="display: none;">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
             </div>
         </div>
     </div>
@@ -2653,6 +2896,268 @@
                 </div>
             `;
         }
+
+        // ==================== LECTURERS FUNCTIONS ====================
+        
+        let lecturerSearchTimeout = null;
+        let currentLecturer = null;
+        
+        function showLecturers() {
+            hideAllPages();
+            document.getElementById('page-lecturers').classList.add('active');
+            loadMyLecturers();
+        }
+        
+        async function loadMyLecturers() {
+            const container = document.getElementById('my-lecturers-list');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            try {
+                const resp = await fetch('/api/my-lecturers', {
+                    headers: getAuthHeaders()
+                });
+                const data = await resp.json();
+                
+                if (data.error) {
+                    container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">${data.error}</div></div>`;
+                    return;
+                }
+                
+                if (!data.lecturers || data.lecturers.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📚</div><div class="empty-text">Нет преподавателей</div></div>';
+                    return;
+                }
+                
+                container.innerHTML = data.lecturers.map(l => `
+                    <div class="lecturer-item" onclick="showLecturerDetail('${encodeURIComponent(l.name)}')">
+                        <div class="lecturer-avatar">👨‍🏫</div>
+                        <div class="lecturer-info">
+                            <div class="lecturer-name">${l.name}</div>
+                            <div class="lecturer-subjects">${l.subjects.slice(0, 2).join(', ')}${l.subjects.length > 2 ? '...' : ''}</div>
+                        </div>
+                        <span class="lecturer-arrow">→</span>
+                    </div>
+                `).join('');
+                
+            } catch (e) {
+                container.innerHTML = `<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка загрузки</div></div>`;
+            }
+        }
+        
+        async function searchLecturers(query) {
+            const autocomplete = document.getElementById('lecturer-autocomplete');
+            
+            if (query.length < 2) {
+                autocomplete.classList.remove('active');
+                return;
+            }
+            
+            // Debounce
+            clearTimeout(lecturerSearchTimeout);
+            lecturerSearchTimeout = setTimeout(async () => {
+                try {
+                    const resp = await fetch(`/api/lecturers/search?q=${encodeURIComponent(query)}`, {
+                        headers: getAuthHeaders()
+                    });
+                    const data = await resp.json();
+                    
+                    if (data.lecturers && data.lecturers.length > 0) {
+                        autocomplete.innerHTML = data.lecturers.map(l => `
+                            <div class="autocomplete-item" onclick="showLecturerDetail('${encodeURIComponent(l)}')">
+                                <div class="name">${highlightMatch(l, query)}</div>
+                            </div>
+                        `).join('');
+                        autocomplete.classList.add('active');
+                    } else {
+                        autocomplete.innerHTML = '<div class="autocomplete-item"><div class="name">Не найдено</div></div>';
+                        autocomplete.classList.add('active');
+                    }
+                } catch (e) {
+                    autocomplete.classList.remove('active');
+                }
+            }, 300);
+        }
+        
+        function highlightMatch(text, query) {
+            const regex = new RegExp(`(${query})`, 'gi');
+            return text.replace(regex, '<strong style="color: var(--accent)">$1</strong>');
+        }
+        
+        async function showLecturerDetail(lecturerNameEncoded) {
+            const lecturerName = decodeURIComponent(lecturerNameEncoded);
+            currentLecturer = lecturerName;
+            
+            // Hide autocomplete
+            document.getElementById('lecturer-autocomplete').classList.remove('active');
+            document.getElementById('lecturer-search').value = '';
+            
+            hideAllPages();
+            document.getElementById('page-lecturer-detail').classList.add('active');
+            document.getElementById('lecturer-detail-name').textContent = '👨‍🏫 ' + lecturerName;
+            
+            // Reset content
+            document.getElementById('lecturer-location').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            document.getElementById('lecturer-today-schedule').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            document.getElementById('lecturer-consultations').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            // Load data
+            loadLecturerLocation(lecturerName);
+            loadLecturerConsultations(lecturerName);
+        }
+        
+        async function loadLecturerLocation(lecturerName) {
+            const locationContainer = document.getElementById('lecturer-location');
+            const todayContainer = document.getElementById('lecturer-today-schedule');
+            
+            try {
+                const resp = await fetch(`/api/lecturer/${encodeURIComponent(lecturerName)}/location`, {
+                    headers: getAuthHeaders()
+                });
+                const data = await resp.json();
+                
+                // Current location
+                if (data.current) {
+                    locationContainer.innerHTML = `
+                        <div class="location-status in-class">
+                            <div class="status-icon">📍</div>
+                            <div class="status-title">Сейчас на паре</div>
+                            <div class="room-big">Ауд. ${data.current.room}</div>
+                            <div class="status-details">
+                                ${data.current.subject}<br>
+                                ${data.current.start_time} - ${data.current.end_time}
+                                ${data.current.group ? `<br>Группа: ${data.current.group}` : ''}
+                            </div>
+                        </div>
+                    `;
+                } else if (data.next) {
+                    const nextDate = data.next.date === new Date().toISOString().split('T')[0] ? 'Сегодня' : data.next.date;
+                    locationContainer.innerHTML = `
+                        <div class="location-status free">
+                            <div class="status-icon">✅</div>
+                            <div class="status-title">Сейчас свободен</div>
+                            <div class="status-details">
+                                <strong>Следующая пара:</strong><br>
+                                ${nextDate} в ${data.next.start_time}<br>
+                                ${data.next.title || data.next.subject || ''}<br>
+                                Ауд. ${data.next.room}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    locationContainer.innerHTML = `
+                        <div class="location-status free">
+                            <div class="status-icon">📭</div>
+                            <div class="status-title">Нет информации</div>
+                            <div class="status-details">Расписание не найдено</div>
+                        </div>
+                    `;
+                }
+                
+                // Today's schedule
+                if (data.today && data.today.length > 0) {
+                    todayContainer.innerHTML = data.today.map(e => `
+                        <div class="lesson-item ${e.is_cancelled ? 'cancelled' : ''}">
+                            <div class="lesson-time">${e.start_time} - ${e.end_time}</div>
+                            <div class="lesson-info">
+                                <div class="lesson-subject">${e.is_cancelled ? '<s>' : ''}${e.title || e.subject}${e.is_cancelled ? '</s> ❌' : ''}</div>
+                                <div class="lesson-room">📍 ${e.room} ${e.group ? '• 👥 ' + e.group : ''}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    todayContainer.innerHTML = '<div class="empty-state small"><div class="empty-text">Сегодня пар нет</div></div>';
+                }
+                
+            } catch (e) {
+                locationContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка загрузки</div></div>';
+                todayContainer.innerHTML = '';
+            }
+        }
+        
+        async function loadLecturerConsultations(lecturerName) {
+            const container = document.getElementById('lecturer-consultations');
+            
+            try {
+                const resp = await fetch(`/api/lecturer/${encodeURIComponent(lecturerName)}/consultations`, {
+                    headers: getAuthHeaders()
+                });
+                const data = await resp.json();
+                
+                if (data.consultations && data.consultations.length > 0) {
+                    container.innerHTML = data.consultations.map(c => `
+                        <div class="lesson-item">
+                            <div class="lesson-time">${c.date}<br>${c.start_time}</div>
+                            <div class="lesson-info">
+                                <div class="lesson-subject">💬 Консультация</div>
+                                <div class="lesson-room">📍 ${c.room}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="empty-state small"><div class="empty-text">Консультации не найдены</div></div>';
+                }
+                
+            } catch (e) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка</div></div>';
+            }
+        }
+        
+        async function toggleLecturerSchedule() {
+            const card = document.getElementById('lecturer-schedule-card');
+            const container = document.getElementById('lecturer-full-schedule');
+            
+            if (card.classList.contains('expanded')) {
+                card.classList.remove('expanded');
+                container.style.display = 'none';
+            } else {
+                card.classList.add('expanded');
+                container.style.display = 'block';
+                
+                if (container.querySelector('.loading')) {
+                    try {
+                        const resp = await fetch(`/api/lecturer/${encodeURIComponent(currentLecturer)}/schedule?days=30`, {
+                            headers: getAuthHeaders()
+                        });
+                        const data = await resp.json();
+                        
+                        if (data.schedule && data.schedule.length > 0) {
+                            // Group by date
+                            const byDate = {};
+                            data.schedule.forEach(e => {
+                                if (!byDate[e.date]) byDate[e.date] = [];
+                                byDate[e.date].push(e);
+                            });
+                            
+                            container.innerHTML = Object.entries(byDate).map(([date, events]) => `
+                                <div class="schedule-day">
+                                    <div class="day-header">${formatDate(date)}</div>
+                                    ${events.map(e => `
+                                        <div class="lesson-item ${e.is_cancelled ? 'cancelled' : ''}">
+                                            <div class="lesson-time">${e.start_time}-${e.end_time}</div>
+                                            <div class="lesson-info">
+                                                <div class="lesson-subject">${e.title || e.subject}</div>
+                                                <div class="lesson-room">📍 ${e.room} ${e.group ? '• ' + e.group : ''}</div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `).join('');
+                        } else {
+                            container.innerHTML = '<div class="empty-state"><div class="empty-text">Расписание не найдено</div></div>';
+                        }
+                    } catch (e) {
+                        container.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка</div></div>';
+                    }
+                }
+            }
+        }
+        
+        // Close autocomplete when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-input-wrapper')) {
+                document.getElementById('lecturer-autocomplete')?.classList.remove('active');
+            }
+        });
 
         // Start loading data
         loadData();
