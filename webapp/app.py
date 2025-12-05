@@ -8,6 +8,7 @@ import hmac
 import hashlib
 import logging
 import time
+import threading
 from urllib.parse import parse_qsl
 from datetime import datetime, timedelta
 from functools import wraps
@@ -79,6 +80,68 @@ def get_mytsi_service_cached(telegram_id: int):
     if service.login(creds['username'], creds['password']):
         return service
     return None
+
+def preload_mytsi_data(telegram_id: int, username: str, password: str):
+    """Preload My TSI data in background after login"""
+    try:
+        logger.info(f"Starting MyTSI preload for user {telegram_id}")
+        
+        service = MyTSIService()
+        if not service.login(username, password):
+            logger.warning(f"MyTSI preload login failed for {telegram_id}")
+            return
+        
+        # Get all data
+        grades = service.get_grades()
+        gpa = service.get_gpa()
+        attendance = service.get_attendance()
+        dashboard = service.get_dashboard_info()
+        bills = service.get_bills()
+        profile = service.get_profile()
+        
+        service.close()
+        
+        # Calculate stats
+        total_credits = sum(int(g.get('credits', 0)) for g in grades if g.get('credits', '').isdigit())
+        total_subjects = len(grades)
+        
+        # Group grades by semester
+        semesters = {}
+        for g in grades:
+            sem = g.get('semester', 'Без семестра')
+            if sem not in semesters:
+                semesters[sem] = []
+            semesters[sem].append({
+                'subject': g.get('subject', ''),
+                'grade': g.get('grade', ''),
+                'credits': g.get('credits', ''),
+                'date': g.get('date', ''),
+                'type': g.get('type', ''),
+                'lecturer': g.get('lecturer', '')
+            })
+        
+        grades_result = [{'semester': k, 'grades': v} for k, v in semesters.items()]
+        
+        result = {
+            'gpa': {
+                'gpa': gpa,
+                'total_credits': total_credits,
+                'total_subjects': total_subjects
+            },
+            'attendance': attendance,
+            'dashboard': dashboard,
+            'bills': bills,
+            'grades': {'semesters': grades_result},
+            'profile': profile
+        }
+        
+        # Cache it
+        set_cached_mytsi(telegram_id, 'all', result)
+        logger.info(f"MyTSI data preloaded for user {telegram_id}")
+        
+    except Exception as e:
+        logger.error(f"MyTSI preload error for {telegram_id}: {e}")
+
 # ============================================
 
 def get_cached_schedule(user_id: int, group_code: str):
@@ -470,6 +533,13 @@ def login_tsi():
         
         # Clear schedule cache
         clear_user_cache(telegram_id)
+        
+        # Start preloading My TSI data in background
+        threading.Thread(
+            target=preload_mytsi_data,
+            args=(telegram_id, username, password),
+            daemon=True
+        ).start()
         
         logger.info(f"User {telegram_id} logged in as {username}")
         return jsonify({'success': True, 'username': username})
