@@ -2721,21 +2721,35 @@ _Скажи "измени группу на XXXX" или "выключи уве�
                     # Create semester buttons
                     keyboard = []
                     sem_list = list(semesters.keys())
+                    
+                    # Sort semesters - try to extract number for sorting
+                    def sem_sort_key(s):
+                        # Try to extract semester number
+                        match = re.search(r'(\d+)', s)
+                        return int(match.group(1)) if match else 0
+                    
+                    sem_list.sort(key=sem_sort_key, reverse=True)  # Latest first
+                    
                     for i in range(0, len(sem_list), 2):
                         row = []
                         for j in range(2):
                             if i + j < len(sem_list):
                                 sem = sem_list[i + j]
-                                short_name = sem.replace('Semester ', 'Сем. ')
+                                # Create short name
+                                match = re.search(r'(\d+)', sem)
+                                if match:
+                                    short_name = f"📚 Семестр {match.group(1)}"
+                                else:
+                                    short_name = sem[:20]
                                 row.append(InlineKeyboardButton(short_name, callback_data=f"grades_sem_{i+j}"))
                         keyboard.append(row)
                     keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")])
                     
-                    # Store semesters data for later use
-                    context.user_data['grades_semesters'] = list(semesters.items())
+                    # Store semesters data for later use (sorted order)
+                    context.user_data['grades_semesters'] = [(s, semesters[s]) for s in sem_list]
                     
                     await query.edit_message_text(
-                        "📚 **Выбери семестр:**\n\n_Всего оценок: " + str(len(grades)) + "_",
+                        f"📚 **Выбери семестр:**\n\n_Всего оценок: {len(grades)} • Семестров: {len(sem_list)}_",
                         parse_mode="Markdown",
                         reply_markup=InlineKeyboardMarkup(keyboard)
                     )

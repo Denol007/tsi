@@ -196,13 +196,30 @@ class MyTSIService:
                     cells = row.find_all(["th", "td"])
                     cell_texts = [cell.get_text(strip=True) for cell in cells]
                     
-                    # Check for semester header
-                    if len(cell_texts) == 1 and "Semester" in cell_texts[0]:
-                        current_semester = cell_texts[0]
-                        continue
+                    # Check for semester header - look for rows with colspan or single cell with semester info
+                    # Semester headers typically: "1 Semester", "2 Semester", etc. or with year
+                    if len(cells) >= 1:
+                        first_cell = cells[0]
+                        first_text = first_cell.get_text(strip=True)
+                        
+                        # Check if it's a semester header (colspan or merged cell)
+                        colspan = first_cell.get('colspan')
+                        
+                        # Match patterns like "1 Semester", "2 Semester", "Semester 1", "1. Semester 2023/2024"
+                        semester_match = re.search(r'(\d+)\s*\.?\s*[Ss]emester|[Ss]emester\s*(\d+)', first_text)
+                        if semester_match:
+                            # Extract semester number and any year info
+                            sem_num = semester_match.group(1) or semester_match.group(2)
+                            # Look for year pattern like 2023/2024
+                            year_match = re.search(r'(\d{4}/\d{4}|\d{4})', first_text)
+                            if year_match:
+                                current_semester = f"Семестр {sem_num} ({year_match.group(1)})"
+                            else:
+                                current_semester = f"Семестр {sem_num}"
+                            continue
                     
                     # Skip header rows
-                    if "Subject" in cell_texts or "Nr" in cell_texts:
+                    if any(h in cell_texts for h in ["Subject", "Nr", "Nr.", "Priekšmets", "Grade", "Mark"]):
                         continue
                     
                     # Parse grade row (expect: Nr, Subject, Block, Part, Credit, Grade, Date, Type, Lecturer, ...)
@@ -212,7 +229,7 @@ class MyTSIService:
                             nr = cell_texts[0]
                             if nr.isdigit():
                                 grade_entry = {
-                                    "semester": current_semester,
+                                    "semester": current_semester if current_semester else "Без семестра",
                                     "subject": cell_texts[1] if len(cell_texts) > 1 else "",
                                     "credits": cell_texts[4] if len(cell_texts) > 4 else "",
                                     "grade": cell_texts[5] if len(cell_texts) > 5 else "",
