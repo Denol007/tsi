@@ -1189,7 +1189,6 @@
         const user = tg.initDataUnsafe?.user;
         let isLoggedIn = false;
         let currentGroup = localStorage.getItem('selectedGroup') || null;
-        let isAnonymous = false;
 
         if (user) {
             document.getElementById('user-name').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
@@ -1197,7 +1196,6 @@
         } else {
             document.getElementById('user-name').textContent = 'Гость';
             document.getElementById('user-avatar').textContent = '👤';
-            isAnonymous = true;
         }
         
         // Show saved group if exists
@@ -1218,7 +1216,6 @@
                 if (userResp.ok) {
                     const userData = await userResp.json();
                     isLoggedIn = userData.is_logged_in;
-                    isAnonymous = userData.is_anonymous || false;
                     
                     // Use server group if available, otherwise keep local
                     if (userData.group_code) {
@@ -1235,7 +1232,7 @@
                 }
 
                 loadTodaySchedule();
-                if (!isAnonymous) {
+                if (isLoggedIn) {
                     loadReminders();
                 }
                 
@@ -1253,13 +1250,7 @@
             const loginBtn = document.getElementById('login-btn');
             const logoutBtn = document.getElementById('logout-btn');
             
-            if (userData.is_anonymous) {
-                statusEl.classList.add('not-logged');
-                titleEl.textContent = 'Гостевой режим';
-                subtitleEl.textContent = 'Выбери группу для просмотра расписания';
-                loginBtn.style.display = 'none';
-                logoutBtn.style.display = 'none';
-            } else if (userData.is_logged_in) {
+            if (userData.is_logged_in) {
                 statusEl.classList.remove('not-logged');
                 titleEl.textContent = `✓ ${userData.username || 'Авторизован'}`;
                 subtitleEl.textContent = 'Аккаунт TSI подключён';
@@ -1268,7 +1259,7 @@
             } else {
                 statusEl.classList.add('not-logged');
                 titleEl.textContent = 'Не авторизован';
-                subtitleEl.textContent = 'Выбери группу для расписания';
+                subtitleEl.textContent = 'Войди через бота: /login';
                 loginBtn.style.display = 'flex';
                 logoutBtn.style.display = 'none';
             }
@@ -1292,16 +1283,20 @@
             container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
             
             try {
-                // Use public API if not logged in, otherwise use authenticated API
-                let resp;
-                if (isLoggedIn && tg.initData) {
-                    resp = await fetch(`${API_BASE}/schedule/today?` + new URLSearchParams({
-                        init_data: tg.initData
-                    }));
-                } else {
-                    // Public API - no auth needed
-                    resp = await fetch(`${API_BASE}/schedule/public/${currentGroup}/today`);
+                // Need to be logged in to see schedule
+                if (!isLoggedIn || !tg.initData) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">🔐</div>
+                            <div class="empty-text">Войди через бота: /login</div>
+                        </div>
+                    `;
+                    return;
                 }
+                
+                const resp = await fetch(`${API_BASE}/schedule/today?` + new URLSearchParams({
+                    init_data: tg.initData
+                }));
                 
                 if (resp.ok) {
                     const data = await resp.json();
@@ -1425,12 +1420,23 @@
             
             const container = document.getElementById('full-schedule');
             
+            // Need to be logged in
+            if (!isLoggedIn || !tg.initData) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔐</div>
+                        <div class="empty-text">Войди через бота: /login</div>
+                    </div>
+                `;
+                return;
+            }
+            
             // Check if group is selected
             if (!currentGroup) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">📋</div>
-                        <div class="empty-text">Выбери группу в настройках</div>
+                        <div class="empty-text">Установи группу: /setgroup</div>
                     </div>
                 `;
                 return;
@@ -1439,15 +1445,9 @@
             container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
             
             try {
-                // Use public API if not logged in
-                let resp;
-                if (isLoggedIn && tg.initData) {
-                    resp = await fetch(`${API_BASE}/schedule/${period}?` + new URLSearchParams({
-                        init_data: tg.initData
-                    }));
-                } else {
-                    resp = await fetch(`${API_BASE}/schedule/public/${currentGroup}/${period}`);
-                }
+                const resp = await fetch(`${API_BASE}/schedule/${period}?` + new URLSearchParams({
+                    init_data: tg.initData
+                }));
                 
                 if (resp.ok) {
                     const data = await resp.json();
