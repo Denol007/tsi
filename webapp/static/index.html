@@ -1254,9 +1254,10 @@
             const logoutBtn = document.getElementById('logout-btn');
             
             if (userData.is_anonymous) {
+                // Anonymous user (no Telegram auth) - show login prompt
                 statusEl.classList.add('not-logged');
-                titleEl.textContent = 'Гостевой режим';
-                subtitleEl.textContent = 'Выбери группу для просмотра расписания';
+                titleEl.textContent = 'Не авторизован';
+                subtitleEl.textContent = 'Войди через бота: /login';
                 loginBtn.style.display = 'none';
                 logoutBtn.style.display = 'none';
             } else if (userData.is_logged_in) {
@@ -1268,8 +1269,8 @@
             } else {
                 statusEl.classList.add('not-logged');
                 titleEl.textContent = 'Не авторизован';
-                subtitleEl.textContent = 'Выбери группу для расписания';
-                loginBtn.style.display = 'flex';
+                subtitleEl.textContent = 'Войди через бота: /login';
+                loginBtn.style.display = 'none';
                 logoutBtn.style.display = 'none';
             }
         }
