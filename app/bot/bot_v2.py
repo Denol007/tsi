@@ -551,6 +551,12 @@ _"Что сегодня?" / "Напомни через час..."_
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
         )
+        
+        # Also update persistent keyboard if needed
+        await update.message.reply_text(
+            "👇",
+            reply_markup=get_main_keyboard(is_logged_in)
+        )
     
     async def cmd_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /help command"""
@@ -1547,6 +1553,13 @@ _"Что сегодня?" / "Напомни через час..."_
             await self.cmd_tomorrow(update, context)
             return
         elif text == "🔐 Войти":
+            # Check if already logged in
+            if self.credentials.has_credentials(telegram_id):
+                await update.message.reply_text(
+                    "✅ Ты уже авторизован!",
+                    reply_markup=get_main_keyboard(is_logged_in=True)
+                )
+                return
             await self.cmd_login(update, context)
             return
         
