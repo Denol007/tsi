@@ -554,6 +554,14 @@ _"Что сегодня?" / "Напомни через час..."_
                     InlineKeyboardButton("📊 Статистика", callback_data="menu_stats")
                 ],
                 [
+                    InlineKeyboardButton("📚 Оценки", callback_data="mytsi_grades"),
+                    InlineKeyboardButton("📊 GPA", callback_data="mytsi_gpa")
+                ],
+                [
+                    InlineKeyboardButton("📈 Посещаемость", callback_data="mytsi_attendance"),
+                    InlineKeyboardButton("💰 Счета", callback_data="mytsi_bills")
+                ],
+                [
                     InlineKeyboardButton("🚪 Аудитории", callback_data="menu_rooms"),
                     InlineKeyboardButton("☀️ Погода", callback_data="menu_weather")
                 ],
@@ -2696,6 +2704,162 @@ _Скажи "измени группу на XXXX" или "выключи уве�
                 "📄 **ICS экспорт**\n\n"
                 "🔧 _Функция в разработке!_"
             )
+        
+        # My TSI portal callbacks
+        elif data == "mytsi_grades":
+            await query.edit_message_text("📚 Загружаю оценки...")
+            try:
+                from app.core.my_tsi_service import MyTSIService
+                creds = self.credentials.get_credentials(telegram_id)
+                if not creds:
+                    await query.edit_message_text("🔐 Сначала войди: /login")
+                    return
+                
+                service = MyTSIService()
+                if service.login(creds['username'], creds['password']):
+                    grades = service.get_grades()
+                    service.close()
+                    
+                    if not grades:
+                        keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]]
+                        await query.edit_message_text("📭 Оценки не найдены", reply_markup=InlineKeyboardMarkup(keyboard))
+                        return
+                    
+                    semesters = {}
+                    for g in grades:
+                        sem = g.get('semester', 'Без семестра')
+                        if sem not in semesters:
+                            semesters[sem] = []
+                        semesters[sem].append(g)
+                    
+                    text = "📊 **Твои оценки:**\n"
+                    sem_keys = list(semesters.keys())[-2:]
+                    for sem in sem_keys:
+                        text += f"\n**{sem}**\n"
+                        for g in semesters[sem][:8]:
+                            grade = g.get('grade', '-')
+                            subject = g.get('subject', '')[:30]
+                            if grade.isdigit():
+                                emoji = "🌟" if int(grade) >= 9 else "✅" if int(grade) >= 7 else "📝"
+                            else:
+                                emoji = "📝"
+                            text += f"{emoji} {grade} | {subject}\n"
+                    
+                    keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]]
+                    await query.edit_message_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+                else:
+                    await query.edit_message_text("❌ Ошибка входа в my.tsi.lv")
+            except Exception as e:
+                await query.edit_message_text(f"❌ Ошибка: {e}")
+        
+        elif data == "mytsi_gpa":
+            await query.edit_message_text("📊 Считаю средний балл...")
+            try:
+                from app.core.my_tsi_service import MyTSIService
+                creds = self.credentials.get_credentials(telegram_id)
+                if not creds:
+                    await query.edit_message_text("🔐 Сначала войди: /login")
+                    return
+                
+                service = MyTSIService()
+                if service.login(creds['username'], creds['password']):
+                    gpa = service.get_gpa()
+                    grades = service.get_grades()
+                    service.close()
+                    
+                    total_credits = sum(int(g.get('credits', 0)) for g in grades if g.get('credits', '').isdigit())
+                    
+                    if gpa >= 9:
+                        emoji, comment = "🏆", "Отлично!"
+                    elif gpa >= 8:
+                        emoji, comment = "🌟", "Очень хорошо!"
+                    elif gpa >= 7:
+                        emoji, comment = "✅", "Хорошо"
+                    else:
+                        emoji, comment = "📚", "Есть над чем работать"
+                    
+                    text = f"{emoji} **GPA: {gpa}**\n\n📚 Предметов: {len(grades)}\n📊 Кредитов: {total_credits}\n\n_{comment}_"
+                    keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]]
+                    await query.edit_message_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+                else:
+                    await query.edit_message_text("❌ Ошибка входа в my.tsi.lv")
+            except Exception as e:
+                await query.edit_message_text(f"❌ Ошибка: {e}")
+        
+        elif data == "mytsi_attendance":
+            await query.edit_message_text("📊 Загружаю посещаемость...")
+            try:
+                from app.core.my_tsi_service import MyTSIService
+                creds = self.credentials.get_credentials(telegram_id)
+                if not creds:
+                    await query.edit_message_text("🔐 Сначала войди: /login")
+                    return
+                
+                service = MyTSIService()
+                if service.login(creds['username'], creds['password']):
+                    att = service.get_attendance()
+                    service.close()
+                    
+                    overall = att.get('overall', 0)
+                    subjects = att.get('subjects', [])
+                    
+                    if overall >= 80:
+                        emoji, comment = "✅", "Отлично!"
+                    elif overall >= 60:
+                        emoji, comment = "📊", "Нормально"
+                    elif overall >= 40:
+                        emoji, comment = "⚠️", "Нужно больше ходить"
+                    else:
+                        emoji, comment = "🚨", "Критически низкая!"
+                    
+                    text = f"{emoji} **Посещаемость: {overall}%**\n_{comment}_\n\n"
+                    for s in subjects[:7]:
+                        pct = s['percentage']
+                        subj_emoji = "✅" if pct >= 80 else "📊" if pct >= 50 else "⚠️" if pct > 0 else "❌"
+                        text += f"{subj_emoji} {pct}% — {s['subject'][:25]}\n"
+                    
+                    keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]]
+                    await query.edit_message_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+                else:
+                    await query.edit_message_text("❌ Ошибка входа в my.tsi.lv")
+            except Exception as e:
+                await query.edit_message_text(f"❌ Ошибка: {e}")
+        
+        elif data == "mytsi_bills":
+            await query.edit_message_text("💰 Загружаю счета...")
+            try:
+                from app.core.my_tsi_service import MyTSIService
+                creds = self.credentials.get_credentials(telegram_id)
+                if not creds:
+                    await query.edit_message_text("🔐 Сначала войди: /login")
+                    return
+                
+                service = MyTSIService()
+                if service.login(creds['username'], creds['password']):
+                    bills_data = service.get_bills()
+                    service.close()
+                    
+                    bills = bills_data.get('bills', [])
+                    text = f"💰 **Счета**\n\n📊 {bills_data.get('summary', 'Нет данных')}\n\n"
+                    
+                    unpaid = [b for b in bills if not b['paid'] and b['amount'] > 0]
+                    if unpaid:
+                        text += "⏳ **К оплате:**\n"
+                        for b in unpaid[-3:]:
+                            text += f"• {b['date']}: {b['amount']:.2f} EUR\n"
+                    
+                    paid = [b for b in bills if b['paid']][-3:]
+                    if paid:
+                        text += "\n✅ **Последние оплаты:**\n"
+                        for b in reversed(paid):
+                            text += f"• {b['payment_date'] or b['date']}: {abs(b['amount']):.2f} EUR\n"
+                    
+                    keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]]
+                    await query.edit_message_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+                else:
+                    await query.edit_message_text("❌ Ошибка входа в my.tsi.lv")
+            except Exception as e:
+                await query.edit_message_text(f"❌ Ошибка: {e}")
     
     # ==================== Helper Methods ====================
     
