@@ -76,14 +76,24 @@ MOTIVATION_QUOTES = [
 
 def get_main_keyboard(is_logged_in: bool = False) -> ReplyKeyboardMarkup:
     """Get persistent keyboard with Menu button"""
+    webapp_url = os.getenv('WEBAPP_URL')
+    
     if is_logged_in:
         keyboard = [
             [KeyboardButton("📋 Menu"), KeyboardButton("📅 Сегодня"), KeyboardButton("📅 Завтра")],
         ]
     else:
         keyboard = [
-            [KeyboardButton("📋 Menu"), KeyboardButton("🔐 Войти")],
+            [KeyboardButton("📋 Menu"), KeyboardButton("📅 Сегодня"), KeyboardButton("📅 Завтра")],
+            [KeyboardButton("🔐 Войти")],
         ]
+    
+    # Add webapp button if URL is configured
+    if webapp_url:
+        keyboard.append([
+            KeyboardButton("📱 Приложение", web_app=WebAppInfo(url=webapp_url))
+        ])
+    
     return ReplyKeyboardMarkup(
         keyboard, 
         resize_keyboard=True,  # Компактная клавиатура
