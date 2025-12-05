@@ -589,7 +589,7 @@ def delete_reminder(reminder_id):
     if not any(r['id'] == reminder_id for r in reminders):
         return jsonify({'success': False, 'error': 'Напоминание не найдено'}), 404
     
-    db.delete_reminder(reminder_id)
+    db.delete_reminder(reminder_id, telegram_id)
     
     logger.info(f"User {telegram_id} deleted reminder {reminder_id}")
     return jsonify({'success': True})
