@@ -355,8 +355,21 @@ class MyTSIService:
         
         for g in grades:
             try:
-                grade = int(g.get("grade", 0))
-                credits = int(g.get("credits", 0))
+                # Extract numeric grade
+                grade_str = str(g.get("grade", "0")).strip()
+                # Remove any non-digit characters but keep the number
+                grade_match = re.search(r'(\d+)', grade_str)
+                if not grade_match:
+                    continue
+                grade = int(grade_match.group(1))
+                
+                # Extract numeric credits
+                credits_str = str(g.get("credits", "0")).strip()
+                credits_match = re.search(r'(\d+)', credits_str)
+                if not credits_match:
+                    continue
+                credits = int(credits_match.group(1))
+                
                 if grade > 0 and credits > 0:
                     weighted_sum += grade * credits
                     total_credits += credits
