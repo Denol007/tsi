@@ -216,6 +216,50 @@ class IntentClassifier:
             ],
             "keywords": ["кампус", "campus", "библиотека"],
             "examples": ["Где библиотека?", "Campus info"]
+        },
+        # My TSI portal intents
+        "show_grades": {
+            "patterns": [
+                r"\b(оценк\w*|grades?|отметк\w*|балл\w*|marks?)\b",
+                r"\b(покажи|мои|какие).*(оценк\w*|grades?)\b",
+                r"\b(успева\w*)\b"
+            ],
+            "keywords": ["оценки", "grades", "баллы", "marks", "успеваемость"],
+            "examples": ["Мои оценки", "Покажи оценки", "Show my grades", "Какая успеваемость"]
+        },
+        "show_gpa": {
+            "patterns": [
+                r"\b(gpa|средн\w*\s+балл|средняя\s+оценка|average\s+grade)\b",
+                r"\b(какой|мой|покажи).*(gpa|средн\w*\s+балл)\b"
+            ],
+            "keywords": ["gpa", "средний балл", "average grade"],
+            "examples": ["Какой у меня GPA?", "Мой средний балл", "Show GPA"]
+        },
+        "show_attendance": {
+            "patterns": [
+                r"\b(посещаемость|attendance|пропуск\w*|прогул\w*)\b",
+                r"\b(покажи|моя|какая).*(посещаемость|attendance)\b",
+                r"\b(сколько\s+пропустил|сколько\s+пропусков)\b"
+            ],
+            "keywords": ["посещаемость", "attendance", "пропуски", "прогулы"],
+            "examples": ["Моя посещаемость", "Сколько пропусков?", "Show attendance"]
+        },
+        "show_bills": {
+            "patterns": [
+                r"\b(счет\w*|bills?|оплат\w*|плат\w*|долг\w*)\b",
+                r"\b(покажи|мои|какие).*(счет\w*|bills?|долг\w*)\b",
+                r"\b(сколько\s+должен|сколько\s+платить)\b"
+            ],
+            "keywords": ["счета", "bills", "оплата", "долг", "платежи"],
+            "examples": ["Мои счета", "Сколько должен?", "Show bills", "Есть ли долги?"]
+        },
+        "show_profile": {
+            "patterns": [
+                r"\b(профиль|profile|мои\s+данные|информаци\w*\s+о\s+мне)\b",
+                r"\b(покажи|мой).*(профиль|profile)\b"
+            ],
+            "keywords": ["профиль", "profile", "мои данные"],
+            "examples": ["Мой профиль", "Show profile", "Покажи мои данные"]
         }
     }
     

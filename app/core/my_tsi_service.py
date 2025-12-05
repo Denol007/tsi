@@ -347,6 +347,134 @@ class MyTSIService:
                 continue
         
         return round(weighted_sum / total_credits, 2) if total_credits > 0 else 0.0
+    
+    def get_attendance(self) -> Dict[str, Any]:
+        """Get attendance data from dashboard"""
+        if not self._is_authenticated:
+            return {"error": "Not authenticated"}
+        
+        try:
+            resp = self.session.get(self.DASHBOARD_URL)
+            soup = BeautifulSoup(resp.text, "html.parser")
+            
+            # Get text content
+            body = soup.find('body')
+            for tag in body.find_all(['script', 'style', 'nav']):
+                tag.decompose()
+            
+            text = body.get_text(separator='\n', strip=True)
+            lines = [l.strip() for l in text.split('\n') if l.strip()]
+            
+            result = {
+                "overall": 0,
+                "subjects": [],
+                "period": ""
+            }
+            
+            in_attendance = False
+            
+            for i, line in enumerate(lines):
+                # Find attendance section
+                if line == "Attendance":
+                    in_attendance = True
+                    continue
+                
+                if in_attendance:
+                    # Overall percentage (just a number with %)
+                    match = re.match(r'^(\d+)%$', line)
+                    if match:
+                        result["overall"] = int(match.group(1))
+                        continue
+                    
+                    # Subject attendance: "Subject Name - X%"
+                    match = re.match(r'^(.+?)\s*-\s*(\d+)%$', line)
+                    if match:
+                        result["subjects"].append({
+                            "subject": match.group(1).strip(),
+                            "percentage": int(match.group(2))
+                        })
+                        continue
+                    
+                    # Date range
+                    date_match = re.match(r'^\d{2}\.\d{2}\.\d{4}\s*-\s*\d{2}\.\d{2}\.\d{4}$', line)
+                    if date_match:
+                        result["period"] = line
+                        continue
+                    
+                    # End of attendance section (when we hit something else)
+                    if not line.startswith("0%") and "%" not in line and result["subjects"]:
+                        break
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error fetching attendance: {e}")
+            return {"error": str(e)}
+    
+    def get_dashboard_info(self) -> Dict[str, Any]:
+        """Get full dashboard info including credits, debts, attendance"""
+        if not self._is_authenticated:
+            return {"error": "Not authenticated"}
+        
+        try:
+            resp = self.session.get(self.DASHBOARD_URL)
+            soup = BeautifulSoup(resp.text, "html.parser")
+            
+            body = soup.find('body')
+            for tag in body.find_all(['script', 'style', 'nav']):
+                tag.decompose()
+            
+            text = body.get_text(separator='\n', strip=True)
+            lines = [l.strip() for l in text.split('\n') if l.strip()]
+            
+            result = {
+                "credits": {
+                    "required": 0,
+                    "completed": 0,
+                    "remaining": 0
+                },
+                "debts": {
+                    "academic": "No debt",
+                    "financial": "No debt",
+                    "fines": "No debt",
+                    "library": "No debt"
+                },
+                "attendance": self.get_attendance()
+            }
+            
+            for i, line in enumerate(lines):
+                # Credits
+                if "Required credits" in line and i+1 < len(lines):
+                    try:
+                        result["credits"]["required"] = int(lines[i+1])
+                    except ValueError:
+                        pass
+                if "Completed credits" in line and i+1 < len(lines):
+                    try:
+                        result["credits"]["completed"] = int(lines[i+1])
+                    except ValueError:
+                        pass
+                if "Remaining credits" in line and i+1 < len(lines):
+                    try:
+                        result["credits"]["remaining"] = int(lines[i+1])
+                    except ValueError:
+                        pass
+                
+                # Debts
+                if "Academic debts" in line and i+1 < len(lines):
+                    result["debts"]["academic"] = lines[i+1]
+                if "Financial debts" in line and i+1 < len(lines):
+                    result["debts"]["financial"] = lines[i+1]
+                if "Debts on fines" in line and i+1 < len(lines):
+                    result["debts"]["fines"] = lines[i+1]
+                if "Library debts" in line and i+1 < len(lines):
+                    result["debts"]["library"] = lines[i+1]
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error fetching dashboard info: {e}")
+            return {"error": str(e)}
 
 
 # Testing function

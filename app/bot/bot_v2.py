@@ -219,6 +219,7 @@ class SmartCampusBotV2:
         app.add_handler(CommandHandler("gpa", self.cmd_gpa))
         app.add_handler(CommandHandler("bills", self.cmd_bills))
         app.add_handler(CommandHandler("profile", self.cmd_profile))
+        app.add_handler(CommandHandler("attendance", self.cmd_attendance))
         
         # Callback query handler for inline buttons
         app.add_handler(CallbackQueryHandler(self.handle_callback))
@@ -1792,6 +1793,76 @@ _{comment}_
             logger.error(f"Profile error: {e}")
             await update.message.reply_text(f"❌ Ошибка: {e}")
     
+    async def cmd_attendance(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Show attendance from my.tsi.lv dashboard"""
+        telegram_id = update.effective_user.id
+        
+        if not self.credentials.has_credentials(telegram_id):
+            await update.message.reply_text("🔐 Сначала войди: /login")
+            return
+        
+        await update.message.reply_text("📊 Загружаю посещаемость...")
+        
+        try:
+            from app.core.my_tsi_service import MyTSIService
+            
+            creds = self.credentials.get_credentials(telegram_id)
+            service = MyTSIService()
+            
+            if service.login(creds['username'], creds['password']):
+                attendance = service.get_attendance()
+                service.close()
+                
+                if 'error' in attendance:
+                    await update.message.reply_text(f"❌ {attendance['error']}")
+                    return
+                
+                overall = attendance.get('overall', 0)
+                subjects = attendance.get('subjects', [])
+                
+                # Emoji based on overall attendance
+                if overall >= 80:
+                    emoji = "✅"
+                    comment = "Отлично!"
+                elif overall >= 60:
+                    emoji = "📊"
+                    comment = "Нормально"
+                elif overall >= 40:
+                    emoji = "⚠️"
+                    comment = "Нужно больше ходить"
+                else:
+                    emoji = "🚨"
+                    comment = "Критически низкая посещаемость!"
+                
+                text = f"""
+{emoji} **Посещаемость: {overall}%**
+_{comment}_
+
+📚 **По предметам:**
+"""
+                for s in subjects:
+                    subj_name = s['subject'][:35]
+                    pct = s['percentage']
+                    
+                    if pct >= 80:
+                        subj_emoji = "✅"
+                    elif pct >= 50:
+                        subj_emoji = "📊"
+                    elif pct > 0:
+                        subj_emoji = "⚠️"
+                    else:
+                        subj_emoji = "❌"
+                    
+                    text += f"{subj_emoji} {pct}% — {subj_name}\n"
+                
+                await update.message.reply_text(text, parse_mode="Markdown")
+            else:
+                await update.message.reply_text("❌ Ошибка входа в my.tsi.lv")
+                
+        except Exception as e:
+            logger.error(f"Attendance error: {e}")
+            await update.message.reply_text(f"❌ Ошибка: {e}")
+    
     # ==================== AI Message Handler ====================
     
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1838,6 +1909,22 @@ _{comment}_
             return
         elif intent == "show_notes" and confidence >= 0.5:
             await self._show_notes(update, context)
+            return
+        # My TSI portal intents
+        elif intent == "show_grades" and confidence >= 0.5:
+            await self.cmd_grades(update, context)
+            return
+        elif intent == "show_gpa" and confidence >= 0.5:
+            await self.cmd_gpa(update, context)
+            return
+        elif intent == "show_attendance" and confidence >= 0.5:
+            await self.cmd_attendance(update, context)
+            return
+        elif intent == "show_bills" and confidence >= 0.5:
+            await self.cmd_bills(update, context)
+            return
+        elif intent == "show_profile" and confidence >= 0.5:
+            await self.cmd_profile(update, context)
             return
         
         # Show typing indicator
