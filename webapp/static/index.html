@@ -1177,6 +1177,16 @@
         tg.ready();
         tg.expand();
         
+        // Debug: check if initData is available
+        console.log('Telegram WebApp Debug:');
+        console.log('- initData:', tg.initData ? 'present (' + tg.initData.length + ' chars)' : 'EMPTY');
+        console.log('- initDataUnsafe:', JSON.stringify(tg.initDataUnsafe));
+        console.log('- platform:', tg.platform);
+        console.log('- version:', tg.version);
+        
+        // Check if opened outside Telegram
+        const isInTelegram = tg.initData && tg.initData.length > 0;
+        
         // Apply Telegram theme
         if (tg.themeParams) {
             document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#1a1a2e');
@@ -1209,6 +1219,15 @@
 
         // =============== Data Loading ===============
         async function loadData() {
+            // Check if we have Telegram auth
+            if (!isInTelegram) {
+                console.warn('No Telegram init data - app opened outside Telegram');
+                // Show warning but still try to load public schedule
+                updateLoginStatus({ is_logged_in: false, _no_telegram: true });
+                loadTodaySchedule();
+                return;
+            }
+            
             try {
                 const userResp = await fetch(`${API_BASE}/user?` + new URLSearchParams({
                     init_data: tg.initData || ''
@@ -1229,6 +1248,9 @@
                     }
                     
                     updateLoginStatus(userData);
+                } else if (userResp.status === 401) {
+                    console.error('Telegram auth failed - initData invalid');
+                    updateLoginStatus({ is_logged_in: false, _auth_failed: true });
                 }
 
                 loadTodaySchedule();
@@ -1247,6 +1269,26 @@
             const subtitleEl = document.getElementById('login-status-subtitle');
             const loginBtn = document.getElementById('login-btn');
             const logoutBtn = document.getElementById('logout-btn');
+            
+            if (userData._no_telegram) {
+                // App opened outside Telegram
+                statusEl.classList.add('not-logged');
+                titleEl.textContent = '⚠️ Открой через Telegram';
+                subtitleEl.textContent = 'Нажми кнопку в боте';
+                loginBtn.style.display = 'none';
+                logoutBtn.style.display = 'none';
+                return;
+            }
+            
+            if (userData._auth_failed) {
+                // Telegram auth failed
+                statusEl.classList.add('not-logged');
+                titleEl.textContent = '❌ Ошибка авторизации';
+                subtitleEl.textContent = 'Перезапусти приложение';
+                loginBtn.style.display = 'none';
+                logoutBtn.style.display = 'none';
+                return;
+            }
             
             if (userData.is_logged_in) {
                 // User is logged in to TSI
