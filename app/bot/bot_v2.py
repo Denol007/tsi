@@ -189,6 +189,8 @@ class SmartCampusBotV2:
         app.add_handler(CommandHandler("today", self.cmd_today))
         app.add_handler(CommandHandler("tomorrow", self.cmd_tomorrow))
         app.add_handler(CommandHandler("week", self.cmd_week))
+        app.add_handler(CommandHandler("busy", self.cmd_busy))
+        app.add_handler(CommandHandler("free", self.cmd_free))
         app.add_handler(CommandHandler("next", self.cmd_next))
         app.add_handler(CommandHandler("setgroup", self.cmd_setgroup))
         app.add_handler(CommandHandler("mygroup", self.cmd_mygroup))
@@ -242,6 +244,7 @@ class SmartCampusBotV2:
             BotCommand("today", "📅 Расписание на сегодня"),
             BotCommand("tomorrow", "📅 Расписание на завтра"),
             BotCommand("week", "📅 Расписание на неделю"),
+            BotCommand("busy", "⏰ Время занятости"),
             BotCommand("grades", "📊 Мои оценки"),
             BotCommand("gpa", "📈 Средний балл"),
             BotCommand("attendance", "📋 Посещаемость"),
@@ -610,6 +613,14 @@ _Твой персональный помощник в TSI_
 • `/freerooms` - свободные аудитории
 
 ━━━━━━━━━━━━━━━━━━━
+**⏰ ЗАНЯТОСТЬ** _(для графика работы)_
+━━━━━━━━━━━━━━━━━━━
+• `/busy` - время пар на неделю
+• `/busy месяц` - время пар на месяц
+• `/free` - когда свободен
+• Или спроси: _"Когда я занят в четверг?"_
+
+━━━━━━━━━━━━━━━━━━━
 **🎓 MY.TSI.LV**
 ━━━━━━━━━━━━━━━━━━━
 • `/grades` - твои оценки по семестрам
@@ -639,10 +650,10 @@ _Твой персональный помощник в TSI_
 Просто напиши вопрос на любом языке!
 
 💬 _Примеры:_
-• "Что у меня завтра?"
+• "Когда я освобожусь завтра?"
+• "Сколько я занят в четверг?"
+• "Время пар на месяц"
 • "Покажи мой средний балл"
-• "Когда экзамен по математике?"
-• "Напомни через час"
 
 📱 **Mini App** - нажми кнопку меню!
         """
@@ -735,6 +746,16 @@ _Твой персональный помощник в TSI_
         if not await self._check_auth(update):
             return
         await self._send_schedule(update, context, "week")
+    
+    async def cmd_busy(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /busy command - show busy schedule times"""
+        query = " ".join(context.args) if context.args else ""
+        await self.cmd_busy_time(update, context, query)
+    
+    async def cmd_free(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /free command - show free time"""
+        query = " ".join(context.args) if context.args else ""
+        await self.cmd_free_time(update, context, query)
     
     async def cmd_next(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /next command"""
@@ -1885,6 +1906,265 @@ _{comment}_
             logger.error(f"Attendance error: {e}")
             await update.message.reply_text(f"❌ Ошибка: {e}")
     
+    # ==================== Busy/Free Time Analysis ====================
+    
+    async def cmd_busy_time(self, update: Update, context: ContextTypes.DEFAULT_TYPE, query: str = ""):
+        """Show when user is busy (class schedule times)"""
+        telegram_id = update.effective_user.id
+        
+        if not self.credentials.has_credentials(telegram_id):
+            await update.message.reply_text("🔐 Сначала войди: /login")
+            return
+        
+        # Determine period from query
+        period = self._extract_period(query)
+        
+        await update.message.reply_text(f"📊 Анализирую занятость {period['label']}...")
+        
+        try:
+            creds = self.credentials.get_credentials(telegram_id)
+            calendar = CalendarService()
+            
+            if not calendar.login(creds['username'], creds['password']):
+                await update.message.reply_text("❌ Ошибка входа")
+                return
+            
+            events = calendar.get_events(period['start'], period['end'])
+            calendar.close()
+            
+            if not events:
+                await update.message.reply_text(f"📭 Нет занятий {period['label']}")
+                return
+            
+            # Group by date
+            from collections import defaultdict
+            by_date = defaultdict(list)
+            for e in events:
+                date_key = e['start'].strftime('%Y-%m-%d')
+                by_date[date_key].append(e)
+            
+            text = f"🗓 **Время занятий {period['label']}:**\n\n"
+            
+            for date_str in sorted(by_date.keys()):
+                day_events = sorted(by_date[date_str], key=lambda x: x['start'])
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                day_name = self._get_day_name(date_obj)
+                
+                first_start = day_events[0]['start'].strftime('%H:%M')
+                last_end = day_events[-1]['end'].strftime('%H:%M')
+                
+                text += f"**{day_name} ({date_obj.strftime('%d.%m')}):** {first_start} — {last_end}\n"
+                
+                # Show individual classes
+                for e in day_events:
+                    text += f"  • {e['start'].strftime('%H:%M')}-{e['end'].strftime('%H:%M')} {e['subject'][:25]}\n"
+                text += "\n"
+            
+            # Summary
+            total_hours = sum(
+                (e['end'] - e['start']).total_seconds() / 3600 
+                for events_list in by_date.values() 
+                for e in events_list
+            )
+            text += f"\n📊 **Итого:** {len(by_date)} дней, ~{total_hours:.1f} часов занятий"
+            
+            await update.message.reply_text(text, parse_mode="Markdown")
+            
+        except Exception as e:
+            logger.error(f"Busy time error: {e}")
+            await update.message.reply_text(f"❌ Ошибка: {e}")
+    
+    async def cmd_free_time(self, update: Update, context: ContextTypes.DEFAULT_TYPE, query: str = ""):
+        """Show when user is free / finishes classes"""
+        telegram_id = update.effective_user.id
+        
+        if not self.credentials.has_credentials(telegram_id):
+            await update.message.reply_text("🔐 Сначала войди: /login")
+            return
+        
+        period = self._extract_period(query)
+        
+        await update.message.reply_text(f"📊 Анализирую свободное время {period['label']}...")
+        
+        try:
+            creds = self.credentials.get_credentials(telegram_id)
+            calendar = CalendarService()
+            
+            if not calendar.login(creds['username'], creds['password']):
+                await update.message.reply_text("❌ Ошибка входа")
+                return
+            
+            events = calendar.get_events(period['start'], period['end'])
+            calendar.close()
+            
+            if not events:
+                await update.message.reply_text(f"✅ Ты полностью свободен {period['label']}! 🎉")
+                return
+            
+            # Group by date
+            from collections import defaultdict
+            by_date = defaultdict(list)
+            for e in events:
+                date_key = e['start'].strftime('%Y-%m-%d')
+                by_date[date_key].append(e)
+            
+            text = f"🆓 **Свободное время {period['label']}:**\n\n"
+            
+            for date_str in sorted(by_date.keys()):
+                day_events = sorted(by_date[date_str], key=lambda x: x['start'])
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                day_name = self._get_day_name(date_obj)
+                
+                last_end = day_events[-1]['end']
+                first_start = day_events[0]['start']
+                
+                text += f"**{day_name} ({date_obj.strftime('%d.%m')}):**\n"
+                text += f"  ✅ Свободен после {last_end.strftime('%H:%M')}\n"
+                
+                # Find gaps (windows) between classes
+                for i in range(1, len(day_events)):
+                    gap_start = day_events[i-1]['end']
+                    gap_end = day_events[i]['start']
+                    gap_minutes = (gap_end - gap_start).total_seconds() / 60
+                    
+                    if gap_minutes >= 30:  # Show gaps of 30+ minutes
+                        text += f"  🕐 Окно: {gap_start.strftime('%H:%M')} — {gap_end.strftime('%H:%M')} ({int(gap_minutes)} мин)\n"
+                
+                text += "\n"
+            
+            # Days without classes
+            all_dates = set()
+            current = period['start']
+            while current <= period['end']:
+                if current.weekday() < 6:  # Skip Sunday
+                    all_dates.add(current.strftime('%Y-%m-%d'))
+                current += timedelta(days=1)
+            
+            free_days = all_dates - set(by_date.keys())
+            if free_days:
+                text += "🎉 **Полностью свободные дни:**\n"
+                for d in sorted(free_days)[:5]:
+                    date_obj = datetime.strptime(d, '%Y-%m-%d')
+                    text += f"  • {self._get_day_name(date_obj)} ({date_obj.strftime('%d.%m')})\n"
+            
+            await update.message.reply_text(text, parse_mode="Markdown")
+            
+        except Exception as e:
+            logger.error(f"Free time error: {e}")
+            await update.message.reply_text(f"❌ Ошибка: {e}")
+    
+    async def cmd_workday_hours(self, update: Update, context: ContextTypes.DEFAULT_TYPE, query: str = ""):
+        """Show start/end times for classes"""
+        telegram_id = update.effective_user.id
+        
+        if not self.credentials.has_credentials(telegram_id):
+            await update.message.reply_text("🔐 Сначала войди: /login")
+            return
+        
+        period = self._extract_period(query)
+        
+        try:
+            creds = self.credentials.get_credentials(telegram_id)
+            calendar = CalendarService()
+            
+            if not calendar.login(creds['username'], creds['password']):
+                await update.message.reply_text("❌ Ошибка входа")
+                return
+            
+            events = calendar.get_events(period['start'], period['end'])
+            calendar.close()
+            
+            if not events:
+                await update.message.reply_text(f"📭 Нет занятий {period['label']}")
+                return
+            
+            # Group by date
+            from collections import defaultdict
+            by_date = defaultdict(list)
+            for e in events:
+                date_key = e['start'].strftime('%Y-%m-%d')
+                by_date[date_key].append(e)
+            
+            text = f"⏰ **Время начала и конца пар {period['label']}:**\n\n"
+            
+            for date_str in sorted(by_date.keys()):
+                day_events = sorted(by_date[date_str], key=lambda x: x['start'])
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                day_name = self._get_day_name(date_obj)
+                
+                first = day_events[0]
+                last = day_events[-1]
+                
+                text += f"**{day_name} {date_obj.strftime('%d.%m')}:**\n"
+                text += f"  🌅 Начало: {first['start'].strftime('%H:%M')} — {first['subject'][:20]}\n"
+                text += f"  🌆 Конец: {last['end'].strftime('%H:%M')} — {last['subject'][:20]}\n"
+                text += f"  📚 Всего пар: {len(day_events)}\n\n"
+            
+            await update.message.reply_text(text, parse_mode="Markdown")
+            
+        except Exception as e:
+            logger.error(f"Workday hours error: {e}")
+            await update.message.reply_text(f"❌ Ошибка: {e}")
+    
+    def _extract_period(self, query: str) -> dict:
+        """Extract time period from query text"""
+        query = query.lower()
+        now = datetime.now(self.tz)
+        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        if any(w in query for w in ['сегодня', 'today']):
+            return {'start': today, 'end': today + timedelta(days=1), 'label': 'на сегодня'}
+        elif any(w in query for w in ['завтра', 'tomorrow']):
+            return {'start': today + timedelta(days=1), 'end': today + timedelta(days=2), 'label': 'на завтра'}
+        elif any(w in query for w in ['послезавтра']):
+            return {'start': today + timedelta(days=2), 'end': today + timedelta(days=3), 'label': 'на послезавтра'}
+        elif any(w in query for w in ['месяц', 'month']):
+            return {'start': today, 'end': today + timedelta(days=30), 'label': 'на месяц'}
+        elif any(w in query for w in ['понедельник', 'monday']):
+            days_ahead = (0 - today.weekday()) % 7
+            if days_ahead == 0:
+                days_ahead = 7
+            target = today + timedelta(days=days_ahead)
+            return {'start': target, 'end': target + timedelta(days=1), 'label': 'в понедельник'}
+        elif any(w in query for w in ['вторник', 'tuesday']):
+            days_ahead = (1 - today.weekday()) % 7
+            if days_ahead == 0:
+                days_ahead = 7
+            target = today + timedelta(days=days_ahead)
+            return {'start': target, 'end': target + timedelta(days=1), 'label': 'во вторник'}
+        elif any(w in query for w in ['среда', 'среду', 'wednesday']):
+            days_ahead = (2 - today.weekday()) % 7
+            if days_ahead == 0:
+                days_ahead = 7
+            target = today + timedelta(days=days_ahead)
+            return {'start': target, 'end': target + timedelta(days=1), 'label': 'в среду'}
+        elif any(w in query for w in ['четверг', 'thursday']):
+            days_ahead = (3 - today.weekday()) % 7
+            if days_ahead == 0:
+                days_ahead = 7
+            target = today + timedelta(days=days_ahead)
+            return {'start': target, 'end': target + timedelta(days=1), 'label': 'в четверг'}
+        elif any(w in query for w in ['пятниц', 'friday']):
+            days_ahead = (4 - today.weekday()) % 7
+            if days_ahead == 0:
+                days_ahead = 7
+            target = today + timedelta(days=days_ahead)
+            return {'start': target, 'end': target + timedelta(days=1), 'label': 'в пятницу'}
+        elif any(w in query for w in ['суббот', 'saturday']):
+            days_ahead = (5 - today.weekday()) % 7
+            if days_ahead == 0:
+                days_ahead = 7
+            target = today + timedelta(days=days_ahead)
+            return {'start': target, 'end': target + timedelta(days=1), 'label': 'в субботу'}
+        else:
+            # Default: this week
+            return {'start': today, 'end': today + timedelta(days=7), 'label': 'на неделю'}
+    
+    def _get_day_name(self, date: datetime) -> str:
+        """Get Russian day name"""
+        days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+        return days[date.weekday()]
+    
     # ==================== AI Message Handler ====================
     
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1947,6 +2227,15 @@ _{comment}_
             return
         elif intent == "show_profile" and confidence >= 0.5:
             await self.cmd_profile(update, context)
+            return
+        elif intent == "busy_time" and confidence >= 0.5:
+            await self.cmd_busy_time(update, context, text)
+            return
+        elif intent == "free_time" and confidence >= 0.5:
+            await self.cmd_free_time(update, context, text)
+            return
+        elif intent == "workday_hours" and confidence >= 0.5:
+            await self.cmd_workday_hours(update, context, text)
             return
         
         # Show typing indicator
