@@ -661,6 +661,7 @@ def get_mytsi_all():
         attendance = service.get_attendance()
         dashboard = service.get_dashboard_info()
         bills = service.get_bills()
+        profile = service.get_profile()
         
         service.close()
         
@@ -694,7 +695,8 @@ def get_mytsi_all():
             'attendance': attendance,
             'dashboard': dashboard,
             'bills': bills,
-            'grades': {'semesters': grades_result}
+            'grades': {'semesters': grades_result},
+            'profile': profile
         }
         
         # Cache the result

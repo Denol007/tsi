@@ -1070,6 +1070,46 @@
             font-size: 11px;
             color: var(--tg-theme-hint-color);
         }
+
+        /* Profile styles */
+        .profile-list {
+            padding: 8px 0;
+        }
+
+        .profile-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--card-border);
+            gap: 12px;
+        }
+
+        .profile-item:last-child {
+            border-bottom: none;
+        }
+
+        .profile-icon {
+            font-size: 20px;
+            width: 32px;
+            text-align: center;
+        }
+
+        .profile-content {
+            flex: 1;
+        }
+
+        .profile-label {
+            font-size: 11px;
+            color: var(--tg-theme-hint-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .profile-value {
+            font-size: 15px;
+            font-weight: 500;
+            margin-top: 2px;
+        }
     </style>
 </head>
 <body>
@@ -1230,6 +1270,10 @@
                     <div class="action-icon">💰</div>
                     <span>Счета</span>
                 </div>
+                <div class="action-btn" onclick="showMyTSIProfile()">
+                    <div class="action-icon">👤</div>
+                    <span>Профиль</span>
+                </div>
             </div>
             
             <!-- GPA Card -->
@@ -1296,6 +1340,20 @@
             </div>
             
             <div class="schedule-card" id="mytsi-bills-list">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My TSI Profile Page -->
+    <div id="page-mytsi-profile" class="page">
+        <div class="section">
+            <div class="section-header">
+                <span class="section-title">👤 Личные данные</span>
+                <a href="#" class="section-action" onclick="showMyTSI()">← Назад</a>
+            </div>
+            
+            <div class="schedule-card" id="mytsi-profile-card">
                 <div class="loading"><div class="spinner"></div></div>
             </div>
         </div>
@@ -1684,6 +1742,7 @@
             else if (page === 'mytsi-grades') loadMyTSIGrades();
             else if (page === 'mytsi-attendance') loadMyTSIAttendanceList();
             else if (page === 'mytsi-bills') loadMyTSIBillsList();
+            else if (page === 'mytsi-profile') loadMyTSIProfile();
         }
 
         function showSchedule() { navigate('schedule'); }
@@ -2157,6 +2216,7 @@
             attendance: null,
             bills: null,
             dashboard: null,
+            profile: null,
             loaded: false,
             loading: false
         };
@@ -2194,6 +2254,7 @@
                     myTSIData.dashboard = data.dashboard;
                     myTSIData.bills = data.bills;
                     myTSIData.grades = data.grades;
+                    myTSIData.profile = data.profile;
                     myTSIData.loaded = true;
                     
                     renderMyTSICards();
@@ -2521,6 +2582,76 @@
                 summaryContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка загрузки</div></div>';
                 listContainer.innerHTML = '';
             }
+        }
+
+        // =============== My TSI Profile ===============
+        function showMyTSIProfile() {
+            navigate('mytsi-profile');
+        }
+
+        async function loadMyTSIProfile() {
+            const container = document.getElementById('mytsi-profile-card');
+            
+            // Try to use cached data first
+            if (myTSIData.loaded && myTSIData.profile) {
+                renderProfile(myTSIData.profile);
+                return;
+            }
+            
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            // If all data not loaded yet, load it
+            if (!myTSIData.loaded) {
+                await loadMyTSIDashboard();
+            }
+            
+            if (myTSIData.profile) {
+                renderProfile(myTSIData.profile);
+            } else {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Не удалось загрузить профиль</div></div>';
+            }
+        }
+
+        function renderProfile(profile) {
+            const container = document.getElementById('mytsi-profile-card');
+            
+            if (!profile || profile.error) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔐</div><div class="empty-text">Войди для просмотра</div></div>';
+                return;
+            }
+            
+            const fields = [
+                { icon: '👤', label: 'Имя', value: profile.name },
+                { icon: '🆔', label: 'Код студента', value: profile.student_code },
+                { icon: '🏫', label: 'Факультет', value: profile.faculty },
+                { icon: '📚', label: 'Программа', value: profile.programme },
+                { icon: '🎯', label: 'Специализация', value: profile.specialization },
+                { icon: '📊', label: 'Уровень', value: profile.level },
+                { icon: '📅', label: 'Курс', value: profile.year },
+                { icon: '👥', label: 'Группа', value: profile.group },
+                { icon: '⏰', label: 'Форма обучения', value: profile.study_mode },
+                { icon: '✅', label: 'Статус', value: profile.status },
+                { icon: '🌍', label: 'Страна', value: profile.country }
+            ].filter(f => f.value && f.value.trim());
+            
+            if (fields.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Нет данных</div></div>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <div class="profile-list">
+                    ${fields.map(f => `
+                        <div class="profile-item">
+                            <div class="profile-icon">${f.icon}</div>
+                            <div class="profile-content">
+                                <div class="profile-label">${f.label}</div>
+                                <div class="profile-value">${f.value}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
         }
 
         // Start loading data
