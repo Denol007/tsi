@@ -1177,16 +1177,6 @@
         tg.ready();
         tg.expand();
         
-        // Debug: check if initData is available
-        console.log('Telegram WebApp Debug:');
-        console.log('- initData:', tg.initData ? 'present (' + tg.initData.length + ' chars)' : 'EMPTY');
-        console.log('- initDataUnsafe:', JSON.stringify(tg.initDataUnsafe));
-        console.log('- platform:', tg.platform);
-        console.log('- version:', tg.version);
-        
-        // Check if opened outside Telegram
-        const isInTelegram = tg.initData && tg.initData.length > 0;
-        
         // Apply Telegram theme
         if (tg.themeParams) {
             document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#1a1a2e');
@@ -1199,13 +1189,15 @@
         const user = tg.initDataUnsafe?.user;
         let isLoggedIn = false;
         let currentGroup = localStorage.getItem('selectedGroup') || null;
+        let isAnonymous = false;
 
         if (user) {
             document.getElementById('user-name').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
             document.getElementById('user-avatar').textContent = user.first_name.charAt(0).toUpperCase();
         } else {
-            document.getElementById('user-name').textContent = 'Пользователь';
+            document.getElementById('user-name').textContent = 'Гость';
             document.getElementById('user-avatar').textContent = '👤';
+            isAnonymous = true;
         }
         
         // Show saved group if exists
@@ -1219,15 +1211,6 @@
 
         // =============== Data Loading ===============
         async function loadData() {
-            // Check if we have Telegram auth
-            if (!isInTelegram) {
-                console.warn('No Telegram init data - app opened outside Telegram');
-                // Show warning but still try to load public schedule
-                updateLoginStatus({ is_logged_in: false, _no_telegram: true });
-                loadTodaySchedule();
-                return;
-            }
-            
             try {
                 const userResp = await fetch(`${API_BASE}/user?` + new URLSearchParams({
                     init_data: tg.initData || ''
@@ -1235,6 +1218,7 @@
                 if (userResp.ok) {
                     const userData = await userResp.json();
                     isLoggedIn = userData.is_logged_in;
+                    isAnonymous = userData.is_anonymous || false;
                     
                     // Use server group if available, otherwise keep local
                     if (userData.group_code) {
@@ -1248,13 +1232,12 @@
                     }
                     
                     updateLoginStatus(userData);
-                } else if (userResp.status === 401) {
-                    console.error('Telegram auth failed - initData invalid');
-                    updateLoginStatus({ is_logged_in: false, _auth_failed: true });
                 }
 
                 loadTodaySchedule();
-                loadReminders();
+                if (!isAnonymous) {
+                    loadReminders();
+                }
                 
             } catch (error) {
                 console.error('Failed to load data:', error);
@@ -1270,38 +1253,22 @@
             const loginBtn = document.getElementById('login-btn');
             const logoutBtn = document.getElementById('logout-btn');
             
-            if (userData._no_telegram) {
-                // App opened outside Telegram
+            if (userData.is_anonymous) {
                 statusEl.classList.add('not-logged');
-                titleEl.textContent = '⚠️ Открой через Telegram';
-                subtitleEl.textContent = 'Нажми кнопку в боте';
+                titleEl.textContent = 'Гостевой режим';
+                subtitleEl.textContent = 'Выбери группу для просмотра расписания';
                 loginBtn.style.display = 'none';
                 logoutBtn.style.display = 'none';
-                return;
-            }
-            
-            if (userData._auth_failed) {
-                // Telegram auth failed
-                statusEl.classList.add('not-logged');
-                titleEl.textContent = '❌ Ошибка авторизации';
-                subtitleEl.textContent = 'Перезапусти приложение';
-                loginBtn.style.display = 'none';
-                logoutBtn.style.display = 'none';
-                return;
-            }
-            
-            if (userData.is_logged_in) {
-                // User is logged in to TSI
+            } else if (userData.is_logged_in) {
                 statusEl.classList.remove('not-logged');
                 titleEl.textContent = `✓ ${userData.username || 'Авторизован'}`;
                 subtitleEl.textContent = 'Аккаунт TSI подключён';
                 loginBtn.style.display = 'none';
                 logoutBtn.style.display = 'flex';
             } else {
-                // User is not logged in - show login button
                 statusEl.classList.add('not-logged');
                 titleEl.textContent = 'Не авторизован';
-                subtitleEl.textContent = 'Нажми чтобы войти';
+                subtitleEl.textContent = 'Выбери группу для расписания';
                 loginBtn.style.display = 'flex';
                 logoutBtn.style.display = 'none';
             }

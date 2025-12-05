@@ -149,7 +149,24 @@ def require_auth(f):
         return f(*args, **kwargs)
     return decorated
 
-
+def optional_auth(f):
+    """Decorator for optional Telegram authentication - allows anonymous access"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        init_data = request.args.get('init_data', '')
+        user = validate_telegram_data(init_data)
+        
+        if not user:
+            # For development mode
+            if os.getenv('DEBUG', 'false').lower() == 'true':
+                user_id = request.headers.get('X-User-ID')
+                if user_id:
+                    user = {'id': int(user_id)}
+        
+        # Set user (can be None for anonymous access)
+        request.telegram_user = user
+        return f(*args, **kwargs)
+    return decorated
 
 # ==================== Static Files ====================
 
@@ -166,10 +183,21 @@ def static_files(path):
 # ==================== API Routes ====================
 
 @app.route('/api/user')
-@require_auth
+@optional_auth
 def get_user():
     """Get user info"""
     user = request.telegram_user
+    
+    if not user:
+        # Anonymous user
+        return jsonify({
+            'id': None,
+            'username': None,
+            'group_code': None,
+            'is_logged_in': False,
+            'is_anonymous': True
+        })
+    
     telegram_id = user['id']
     
     # Check credentials first
