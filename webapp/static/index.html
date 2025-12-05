@@ -1189,15 +1189,13 @@
         const user = tg.initDataUnsafe?.user;
         let isLoggedIn = false;
         let currentGroup = localStorage.getItem('selectedGroup') || null;
-        let isAnonymous = false;
 
         if (user) {
             document.getElementById('user-name').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
             document.getElementById('user-avatar').textContent = user.first_name.charAt(0).toUpperCase();
         } else {
-            document.getElementById('user-name').textContent = 'Гость';
+            document.getElementById('user-name').textContent = 'Пользователь';
             document.getElementById('user-avatar').textContent = '👤';
-            isAnonymous = true;
         }
         
         // Show saved group if exists
@@ -1218,7 +1216,6 @@
                 if (userResp.ok) {
                     const userData = await userResp.json();
                     isLoggedIn = userData.is_logged_in;
-                    isAnonymous = userData.is_anonymous || false;
                     
                     // Use server group if available, otherwise keep local
                     if (userData.group_code) {
@@ -1235,9 +1232,7 @@
                 }
 
                 loadTodaySchedule();
-                if (!isAnonymous) {
-                    loadReminders();
-                }
+                loadReminders();
                 
             } catch (error) {
                 console.error('Failed to load data:', error);
