@@ -2117,12 +2117,22 @@ _Скажи "измени группу на XXXX" или "выключи уве�
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode="Markdown"
                 )
+                # Send keyboard reminder
+                await query.message.reply_text(
+                    "👇",
+                    reply_markup=get_main_keyboard(is_logged_in)
+                )
             else:
                 keyboard = [[InlineKeyboardButton("🔐 Войти", callback_data="login")]]
                 await query.edit_message_text(
                     "📋 **Меню**\n\n🔐 Войди для доступа",
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode="Markdown"
+                )
+                # Send keyboard reminder
+                await query.message.reply_text(
+                    "👇",
+                    reply_markup=get_main_keyboard(False)
                 )
         
         elif data == "menu_notes":

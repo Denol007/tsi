@@ -1684,12 +1684,24 @@
             if (!confirm('Удалить напоминание?')) return;
             
             try {
-                await fetch(`${API_BASE}/reminders/${id}?` + new URLSearchParams({ init_data: tg.initData }), {
+                const resp = await fetch(`${API_BASE}/reminders/${id}?` + new URLSearchParams({ init_data: tg.initData }), {
                     method: 'DELETE'
                 });
-                loadAllReminders();
-                loadReminders();
+                
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.success) {
+                        loadAllReminders();
+                        loadReminders();
+                    } else {
+                        tg.showAlert(data.error || 'Ошибка удаления');
+                    }
+                } else {
+                    const errorData = await resp.json().catch(() => ({}));
+                    tg.showAlert(errorData.error || 'Ошибка удаления');
+                }
             } catch (error) {
+                console.error('Delete reminder error:', error);
                 tg.showAlert('Ошибка удаления');
             }
         }
