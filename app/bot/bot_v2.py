@@ -2707,7 +2707,8 @@ _Скажи "измени группу на XXXX" или "выключи уве�
         
         # My TSI portal callbacks
         elif data == "mytsi_grades":
-            await query.edit_message_text("📚 Загружаю оценки...")
+            # Show semester selection
+            await query.edit_message_text("📚 Загружаю семестры...")
             try:
                 from app.core.my_tsi_service import MyTSIService
                 creds = self.credentials.get_credentials(telegram_id)
@@ -2725,6 +2726,7 @@ _Скажи "измени группу на XXXX" или "выключи уве�
                         await query.edit_message_text("📭 Оценки не найдены", reply_markup=InlineKeyboardMarkup(keyboard))
                         return
                     
+                    # Get unique semesters
                     semesters = {}
                     for g in grades:
                         sem = g.get('semester', 'Без семестра')
@@ -2732,23 +2734,73 @@ _Скажи "измени группу на XXXX" или "выключи уве�
                             semesters[sem] = []
                         semesters[sem].append(g)
                     
-                    text = "📊 **Твои оценки:**\n"
-                    sem_keys = list(semesters.keys())[-2:]
-                    for sem in sem_keys:
-                        text += f"\n**{sem}**\n"
-                        for g in semesters[sem][:8]:
-                            grade = g.get('grade', '-')
-                            subject = g.get('subject', '')[:30]
-                            if grade.isdigit():
-                                emoji = "🌟" if int(grade) >= 9 else "✅" if int(grade) >= 7 else "📝"
-                            else:
-                                emoji = "📝"
-                            text += f"{emoji} {grade} | {subject}\n"
+                    # Create semester buttons
+                    keyboard = []
+                    sem_list = list(semesters.keys())
+                    for i in range(0, len(sem_list), 2):
+                        row = []
+                        for j in range(2):
+                            if i + j < len(sem_list):
+                                sem = sem_list[i + j]
+                                short_name = sem.replace('Semester ', 'Сем. ')
+                                row.append(InlineKeyboardButton(short_name, callback_data=f"grades_sem_{i+j}"))
+                        keyboard.append(row)
+                    keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")])
                     
-                    keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]]
-                    await query.edit_message_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+                    # Store semesters data for later use
+                    context.user_data['grades_semesters'] = list(semesters.items())
+                    
+                    await query.edit_message_text(
+                        "📚 **Выбери семестр:**\n\n_Всего оценок: " + str(len(grades)) + "_",
+                        parse_mode="Markdown",
+                        reply_markup=InlineKeyboardMarkup(keyboard)
+                    )
                 else:
                     await query.edit_message_text("❌ Ошибка входа в my.tsi.lv")
+            except Exception as e:
+                await query.edit_message_text(f"❌ Ошибка: {e}")
+        
+        elif data.startswith("grades_sem_"):
+            # Show grades for selected semester
+            try:
+                sem_index = int(data.replace("grades_sem_", ""))
+                semesters = context.user_data.get('grades_semesters', [])
+                
+                if sem_index >= len(semesters):
+                    await query.edit_message_text("❌ Семестр не найден")
+                    return
+                
+                sem_name, sem_grades = semesters[sem_index]
+                
+                text = f"📊 **{sem_name}**\n\n"
+                for g in sem_grades:
+                    grade = g.get('grade', '-')
+                    subject = g.get('subject', '')[:35]
+                    credits = g.get('credits', '')
+                    date = g.get('date', '')
+                    
+                    if grade.isdigit():
+                        grade_int = int(grade)
+                        if grade_int >= 9:
+                            emoji = "🌟"
+                        elif grade_int >= 7:
+                            emoji = "✅"
+                        elif grade_int >= 5:
+                            emoji = "📝"
+                        else:
+                            emoji = "⚠️"
+                    else:
+                        emoji = "📝"
+                    
+                    text += f"{emoji} **{grade}** | {subject}\n"
+                    if credits or date:
+                        text += f"    _{credits} кр. • {date}_\n"
+                
+                keyboard = [
+                    [InlineKeyboardButton("◀️ К семестрам", callback_data="mytsi_grades")],
+                    [InlineKeyboardButton("🏠 Меню", callback_data="back_to_menu")]
+                ]
+                await query.edit_message_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
             except Exception as e:
                 await query.edit_message_text(f"❌ Ошибка: {e}")
         

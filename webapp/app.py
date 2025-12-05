@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.core.database import Database
 from app.core.credentials import CredentialManager
 from app.core.calendar_service import CalendarService
+from app.core.my_tsi_service import MyTSIService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -593,6 +594,189 @@ def delete_reminder(reminder_id):
     
     logger.info(f"User {telegram_id} deleted reminder {reminder_id}")
     return jsonify({'success': True})
+
+# ==================== My TSI Portal ====================
+
+@app.route('/api/mytsi/grades')
+@require_auth
+def get_mytsi_grades():
+    """Get grades from my.tsi.lv"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    creds = credentials.get_credentials(telegram_id)
+    if not creds:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        service = MyTSIService()
+        if not service.login(creds['username'], creds['password']):
+            return jsonify({'error': 'Ошибка входа в my.tsi.lv'}), 401
+        
+        grades = service.get_grades()
+        service.close()
+        
+        # Group by semester
+        semesters = {}
+        for g in grades:
+            sem = g.get('semester', 'Без семестра')
+            if sem not in semesters:
+                semesters[sem] = []
+            semesters[sem].append({
+                'subject': g.get('subject', ''),
+                'grade': g.get('grade', ''),
+                'credits': g.get('credits', ''),
+                'date': g.get('date', ''),
+                'type': g.get('type', ''),
+                'lecturer': g.get('lecturer', '')
+            })
+        
+        # Convert to list with semester names
+        result = []
+        for sem_name, sem_grades in semesters.items():
+            result.append({
+                'semester': sem_name,
+                'grades': sem_grades
+            })
+        
+        return jsonify({'semesters': result})
+        
+    except Exception as e:
+        logger.error(f"MyTSI grades error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/mytsi/gpa')
+@require_auth
+def get_mytsi_gpa():
+    """Get GPA from my.tsi.lv"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    creds = credentials.get_credentials(telegram_id)
+    if not creds:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        service = MyTSIService()
+        if not service.login(creds['username'], creds['password']):
+            return jsonify({'error': 'Ошибка входа в my.tsi.lv'}), 401
+        
+        gpa = service.get_gpa()
+        grades = service.get_grades()
+        service.close()
+        
+        total_credits = sum(int(g.get('credits', 0)) for g in grades if g.get('credits', '').isdigit())
+        total_subjects = len(grades)
+        
+        return jsonify({
+            'gpa': gpa,
+            'total_credits': total_credits,
+            'total_subjects': total_subjects
+        })
+        
+    except Exception as e:
+        logger.error(f"MyTSI GPA error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/mytsi/attendance')
+@require_auth
+def get_mytsi_attendance():
+    """Get attendance from my.tsi.lv dashboard"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    creds = credentials.get_credentials(telegram_id)
+    if not creds:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        service = MyTSIService()
+        if not service.login(creds['username'], creds['password']):
+            return jsonify({'error': 'Ошибка входа в my.tsi.lv'}), 401
+        
+        attendance = service.get_attendance()
+        service.close()
+        
+        return jsonify(attendance)
+        
+    except Exception as e:
+        logger.error(f"MyTSI attendance error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/mytsi/bills')
+@require_auth
+def get_mytsi_bills():
+    """Get bills from my.tsi.lv"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    creds = credentials.get_credentials(telegram_id)
+    if not creds:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        service = MyTSIService()
+        if not service.login(creds['username'], creds['password']):
+            return jsonify({'error': 'Ошибка входа в my.tsi.lv'}), 401
+        
+        bills = service.get_bills()
+        service.close()
+        
+        return jsonify(bills)
+        
+    except Exception as e:
+        logger.error(f"MyTSI bills error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/mytsi/profile')
+@require_auth
+def get_mytsi_profile():
+    """Get profile from my.tsi.lv"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    creds = credentials.get_credentials(telegram_id)
+    if not creds:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        service = MyTSIService()
+        if not service.login(creds['username'], creds['password']):
+            return jsonify({'error': 'Ошибка входа в my.tsi.lv'}), 401
+        
+        profile = service.get_profile()
+        service.close()
+        
+        return jsonify(profile)
+        
+    except Exception as e:
+        logger.error(f"MyTSI profile error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/mytsi/dashboard')
+@require_auth
+def get_mytsi_dashboard():
+    """Get full dashboard info from my.tsi.lv"""
+    user = request.telegram_user
+    telegram_id = user['id']
+    
+    creds = credentials.get_credentials(telegram_id)
+    if not creds:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    try:
+        service = MyTSIService()
+        if not service.login(creds['username'], creds['password']):
+            return jsonify({'error': 'Ошибка входа в my.tsi.lv'}), 401
+        
+        dashboard = service.get_dashboard_info()
+        service.close()
+        
+        return jsonify(dashboard)
+        
+    except Exception as e:
+        logger.error(f"MyTSI dashboard error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # ==================== Main ====================
 

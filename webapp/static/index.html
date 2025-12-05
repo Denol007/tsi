@@ -867,6 +867,209 @@
         .page-settings .back-btn {
             display: flex;
         }
+
+        /* My TSI Styles */
+        .mytsi-stat-card {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            gap: 16px;
+        }
+
+        .mytsi-stat-icon {
+            font-size: 40px;
+        }
+
+        .mytsi-stat-content {
+            flex: 1;
+        }
+
+        .mytsi-stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent-light);
+        }
+
+        .mytsi-stat-label {
+            font-size: 13px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .mytsi-stat-sublabel {
+            font-size: 11px;
+            color: var(--tg-theme-hint-color);
+            margin-top: 2px;
+        }
+
+        .grade-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--card-border);
+            gap: 12px;
+        }
+
+        .grade-item:last-child {
+            border-bottom: none;
+        }
+
+        .grade-value {
+            min-width: 40px;
+            height: 40px;
+            background: var(--accent);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .grade-value.excellent {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        }
+
+        .grade-value.good {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+        }
+
+        .grade-value.average {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .grade-value.poor {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .grade-content {
+            flex: 1;
+        }
+
+        .grade-subject {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .grade-details {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .attendance-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--card-border);
+            gap: 12px;
+        }
+
+        .attendance-item:last-child {
+            border-bottom: none;
+        }
+
+        .attendance-bar-container {
+            flex: 1;
+        }
+
+        .attendance-bar {
+            height: 8px;
+            background: var(--card-border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .attendance-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent) 0%, #6366f1 100%);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .attendance-bar-fill.good {
+            background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+        }
+
+        .attendance-bar-fill.warning {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .attendance-bar-fill.danger {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .attendance-percent {
+            min-width: 50px;
+            text-align: right;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .bill-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--card-border);
+            gap: 12px;
+        }
+
+        .bill-item:last-child {
+            border-bottom: none;
+        }
+
+        .bill-status {
+            font-size: 24px;
+        }
+
+        .bill-content {
+            flex: 1;
+        }
+
+        .bill-service {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .bill-date {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .bill-amount {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .bill-amount.paid {
+            color: #22c55e;
+        }
+
+        .bill-amount.unpaid {
+            color: #f59e0b;
+        }
+
+        .credits-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .credits-item {
+            text-align: center;
+        }
+
+        .credits-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-light);
+        }
+
+        .credits-label {
+            font-size: 11px;
+            color: var(--tg-theme-hint-color);
+        }
     </style>
 </head>
 <body>
@@ -909,9 +1112,9 @@
                 <div class="action-icon">📅</div>
                 <span>Расписание</span>
             </div>
-            <div class="action-btn" onclick="showReminders()">
-                <div class="action-icon">⏰</div>
-                <span>Напоминания</span>
+            <div class="action-btn" onclick="showMyTSI()">
+                <div class="action-icon">🎓</div>
+                <span>My TSI</span>
             </div>
             <div class="action-btn" onclick="showNotes()">
                 <div class="action-icon">📝</div>
@@ -1000,6 +1203,102 @@
             </div>
         </div>
         <button class="fab" onclick="showAddReminderModal()">+</button>
+    </div>
+
+    <!-- My TSI Page -->
+    <div id="page-mytsi" class="page">
+        <div class="section">
+            <div class="section-header">
+                <span class="section-title">🎓 Студенческий портал</span>
+            </div>
+            
+            <!-- Quick Stats -->
+            <div class="quick-actions" style="margin-bottom: 16px;">
+                <div class="action-btn" onclick="showMyTSIGrades()">
+                    <div class="action-icon">📚</div>
+                    <span>Оценки</span>
+                </div>
+                <div class="action-btn" onclick="showMyTSIGPA()">
+                    <div class="action-icon">📊</div>
+                    <span>GPA</span>
+                </div>
+                <div class="action-btn" onclick="showMyTSIAttendance()">
+                    <div class="action-icon">📈</div>
+                    <span>Посещаемость</span>
+                </div>
+                <div class="action-btn" onclick="showMyTSIBills()">
+                    <div class="action-icon">💰</div>
+                    <span>Счета</span>
+                </div>
+            </div>
+            
+            <!-- GPA Card -->
+            <div class="schedule-card" id="mytsi-gpa-card" style="margin-bottom: 16px;">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+            
+            <!-- Attendance Card -->
+            <div class="schedule-card" id="mytsi-attendance-card" style="margin-bottom: 16px;">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+            
+            <!-- Credits Card -->
+            <div class="schedule-card" id="mytsi-credits-card">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My TSI Grades Page -->
+    <div id="page-mytsi-grades" class="page">
+        <div class="section">
+            <div class="section-header">
+                <span class="section-title">📚 Оценки</span>
+                <a href="#" class="section-action" onclick="showMyTSI()">← Назад</a>
+            </div>
+            
+            <!-- Semester Tabs -->
+            <div class="tabs" id="semester-tabs">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+            
+            <!-- Grades List -->
+            <div class="schedule-card" id="mytsi-grades-list">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My TSI Attendance Page -->
+    <div id="page-mytsi-attendance" class="page">
+        <div class="section">
+            <div class="section-header">
+                <span class="section-title">📈 Посещаемость</span>
+                <a href="#" class="section-action" onclick="showMyTSI()">← Назад</a>
+            </div>
+            
+            <div class="schedule-card" id="mytsi-attendance-list">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My TSI Bills Page -->
+    <div id="page-mytsi-bills" class="page">
+        <div class="section">
+            <div class="section-header">
+                <span class="section-title">💰 Счета</span>
+                <a href="#" class="section-action" onclick="showMyTSI()">← Назад</a>
+            </div>
+            
+            <div class="schedule-card" id="mytsi-bills-summary" style="margin-bottom: 16px;">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+            
+            <div class="schedule-card" id="mytsi-bills-list">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
     </div>
 
     <!-- Settings Page -->
@@ -1381,6 +1680,10 @@
             else if (page === 'notes') loadNotes();
             else if (page === 'reminders') loadAllReminders();
             else if (page === 'settings') loadGroups();
+            else if (page === 'mytsi') loadMyTSIDashboard();
+            else if (page === 'mytsi-grades') loadMyTSIGrades();
+            else if (page === 'mytsi-attendance') loadMyTSIAttendanceList();
+            else if (page === 'mytsi-bills') loadMyTSIBillsList();
         }
 
         function showSchedule() { navigate('schedule'); }
@@ -1845,6 +2148,350 @@
 
         function showNotifications() {
             tg.showAlert('🔔 Уведомления приходят в бот');
+        }
+
+        // =============== My TSI Functions ===============
+        let myTSIData = {
+            grades: null,
+            gpa: null,
+            attendance: null,
+            bills: null,
+            dashboard: null
+        };
+
+        function showMyTSI() {
+            navigate('mytsi');
+            loadMyTSIDashboard();
+        }
+
+        async function loadMyTSIDashboard() {
+            // Load GPA
+            loadMyTSIGPACard();
+            // Load Attendance summary
+            loadMyTSIAttendanceCard();
+            // Load Credits
+            loadMyTSICreditsCard();
+        }
+
+        async function loadMyTSIGPACard() {
+            const container = document.getElementById('mytsi-gpa-card');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            try {
+                const resp = await fetch(`${API_BASE}/mytsi/gpa?` + new URLSearchParams({ init_data: tg.initData }));
+                if (resp.ok) {
+                    const data = await resp.json();
+                    myTSIData.gpa = data;
+                    
+                    let emoji = '📊';
+                    if (data.gpa >= 9) emoji = '🏆';
+                    else if (data.gpa >= 8) emoji = '🌟';
+                    else if (data.gpa >= 7) emoji = '✅';
+                    
+                    container.innerHTML = `
+                        <div class="mytsi-stat-card">
+                            <div class="mytsi-stat-icon">${emoji}</div>
+                            <div class="mytsi-stat-content">
+                                <div class="mytsi-stat-value">${data.gpa}</div>
+                                <div class="mytsi-stat-label">Средний балл (GPA)</div>
+                                <div class="mytsi-stat-sublabel">${data.total_subjects} предметов • ${data.total_credits} кредитов</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔐</div><div class="empty-text">Войди для просмотра</div></div>';
+                }
+            } catch (error) {
+                console.error('GPA load error:', error);
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка загрузки</div></div>';
+            }
+        }
+
+        async function loadMyTSIAttendanceCard() {
+            const container = document.getElementById('mytsi-attendance-card');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            try {
+                const resp = await fetch(`${API_BASE}/mytsi/attendance?` + new URLSearchParams({ init_data: tg.initData }));
+                if (resp.ok) {
+                    const data = await resp.json();
+                    myTSIData.attendance = data;
+                    
+                    let emoji = '📊';
+                    let barClass = '';
+                    if (data.overall >= 80) { emoji = '✅'; barClass = 'good'; }
+                    else if (data.overall >= 50) { emoji = '⚠️'; barClass = 'warning'; }
+                    else { emoji = '🚨'; barClass = 'danger'; }
+                    
+                    container.innerHTML = `
+                        <div class="mytsi-stat-card">
+                            <div class="mytsi-stat-icon">${emoji}</div>
+                            <div class="mytsi-stat-content">
+                                <div class="mytsi-stat-value">${data.overall}%</div>
+                                <div class="mytsi-stat-label">Посещаемость</div>
+                                <div class="attendance-bar">
+                                    <div class="attendance-bar-fill ${barClass}" style="width: ${data.overall}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔐</div><div class="empty-text">Войди для просмотра</div></div>';
+                }
+            } catch (error) {
+                console.error('Attendance load error:', error);
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка загрузки</div></div>';
+            }
+        }
+
+        async function loadMyTSICreditsCard() {
+            const container = document.getElementById('mytsi-credits-card');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            try {
+                const resp = await fetch(`${API_BASE}/mytsi/dashboard?` + new URLSearchParams({ init_data: tg.initData }));
+                if (resp.ok) {
+                    const data = await resp.json();
+                    myTSIData.dashboard = data;
+                    
+                    const credits = data.credits || {};
+                    container.innerHTML = `
+                        <div class="credits-grid">
+                            <div class="credits-item">
+                                <div class="credits-value">${credits.required || 0}</div>
+                                <div class="credits-label">Нужно</div>
+                            </div>
+                            <div class="credits-item">
+                                <div class="credits-value" style="color: #22c55e;">${credits.completed || 0}</div>
+                                <div class="credits-label">Получено</div>
+                            </div>
+                            <div class="credits-item">
+                                <div class="credits-value" style="color: #f59e0b;">${credits.remaining || 0}</div>
+                                <div class="credits-label">Осталось</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔐</div><div class="empty-text">Войди для просмотра</div></div>';
+                }
+            } catch (error) {
+                console.error('Credits load error:', error);
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка загрузки</div></div>';
+            }
+        }
+
+        let currentSemester = null;
+        let allGrades = [];
+
+        async function showMyTSIGrades() {
+            navigate('mytsi-grades');
+            loadMyTSIGrades();
+        }
+
+        async function loadMyTSIGrades() {
+            const tabsContainer = document.getElementById('semester-tabs');
+            const listContainer = document.getElementById('mytsi-grades-list');
+            
+            tabsContainer.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            listContainer.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            try {
+                const resp = await fetch(`${API_BASE}/mytsi/grades?` + new URLSearchParams({ init_data: tg.initData }));
+                if (resp.ok) {
+                    const data = await resp.json();
+                    allGrades = data.semesters || [];
+                    
+                    if (allGrades.length === 0) {
+                        tabsContainer.innerHTML = '';
+                        listContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">📚</div><div class="empty-text">Оценки не найдены</div></div>';
+                        return;
+                    }
+                    
+                    // Render semester tabs
+                    if (!currentSemester || !allGrades.find(s => s.semester === currentSemester)) {
+                        currentSemester = allGrades[allGrades.length - 1].semester;
+                    }
+                    
+                    tabsContainer.innerHTML = allGrades.map(s => `
+                        <div class="tab ${s.semester === currentSemester ? 'active' : ''}" onclick="selectSemester('${s.semester}')">${s.semester.replace('Semester ', 'Сем. ')}</div>
+                    `).join('');
+                    
+                    renderGrades();
+                } else {
+                    tabsContainer.innerHTML = '';
+                    listContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">🔐</div><div class="empty-text">Войди для просмотра</div></div>';
+                }
+            } catch (error) {
+                console.error('Grades load error:', error);
+                tabsContainer.innerHTML = '';
+                listContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка загрузки</div></div>';
+            }
+        }
+
+        function selectSemester(semester) {
+            currentSemester = semester;
+            document.querySelectorAll('#semester-tabs .tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`#semester-tabs .tab[onclick="selectSemester('${semester}')"]`)?.classList.add('active');
+            renderGrades();
+        }
+
+        function renderGrades() {
+            const container = document.getElementById('mytsi-grades-list');
+            const semesterData = allGrades.find(s => s.semester === currentSemester);
+            
+            if (!semesterData || !semesterData.grades.length) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-text">Нет оценок за этот семестр</div></div>';
+                return;
+            }
+            
+            container.innerHTML = semesterData.grades.map(g => {
+                let gradeClass = '';
+                const gradeNum = parseInt(g.grade);
+                if (gradeNum >= 9) gradeClass = 'excellent';
+                else if (gradeNum >= 7) gradeClass = 'good';
+                else if (gradeNum >= 5) gradeClass = 'average';
+                else gradeClass = 'poor';
+                
+                return `
+                    <div class="grade-item">
+                        <div class="grade-value ${gradeClass}">${g.grade || '-'}</div>
+                        <div class="grade-content">
+                            <div class="grade-subject">${g.subject}</div>
+                            <div class="grade-details">${g.credits} кр. • ${g.date || ''} • ${g.type || ''}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showMyTSIGPA() {
+            tg.showPopup({
+                title: '📊 GPA',
+                message: myTSIData.gpa ? `Твой средний балл: ${myTSIData.gpa.gpa}\n\n${myTSIData.gpa.total_subjects} предметов\n${myTSIData.gpa.total_credits} кредитов` : 'Загрузка...'
+            });
+        }
+
+        async function showMyTSIAttendance() {
+            navigate('mytsi-attendance');
+            loadMyTSIAttendanceList();
+        }
+
+        async function loadMyTSIAttendanceList() {
+            const container = document.getElementById('mytsi-attendance-list');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            try {
+                const resp = await fetch(`${API_BASE}/mytsi/attendance?` + new URLSearchParams({ init_data: tg.initData }));
+                if (resp.ok) {
+                    const data = await resp.json();
+                    
+                    if (!data.subjects || data.subjects.length === 0) {
+                        container.innerHTML = '<div class="empty-state"><div class="empty-icon">📈</div><div class="empty-text">Данные о посещаемости не найдены</div></div>';
+                        return;
+                    }
+                    
+                    // Overall stat
+                    let overallClass = '';
+                    if (data.overall >= 80) overallClass = 'good';
+                    else if (data.overall >= 50) overallClass = 'warning';
+                    else overallClass = 'danger';
+                    
+                    let html = `
+                        <div class="mytsi-stat-card" style="border-bottom: 1px solid var(--card-border);">
+                            <div class="mytsi-stat-icon">📊</div>
+                            <div class="mytsi-stat-content">
+                                <div class="mytsi-stat-value">${data.overall}%</div>
+                                <div class="mytsi-stat-label">Общая посещаемость</div>
+                                <div class="attendance-bar">
+                                    <div class="attendance-bar-fill ${overallClass}" style="width: ${data.overall}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    html += data.subjects.map(s => {
+                        let barClass = '';
+                        if (s.percentage >= 80) barClass = 'good';
+                        else if (s.percentage >= 50) barClass = 'warning';
+                        else barClass = 'danger';
+                        
+                        return `
+                            <div class="attendance-item">
+                                <div class="attendance-bar-container">
+                                    <div class="grade-subject">${s.subject}</div>
+                                    <div class="attendance-bar">
+                                        <div class="attendance-bar-fill ${barClass}" style="width: ${s.percentage}%"></div>
+                                    </div>
+                                </div>
+                                <div class="attendance-percent">${s.percentage}%</div>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔐</div><div class="empty-text">Войди для просмотра</div></div>';
+                }
+            } catch (error) {
+                console.error('Attendance load error:', error);
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка загрузки</div></div>';
+            }
+        }
+
+        async function showMyTSIBills() {
+            navigate('mytsi-bills');
+            loadMyTSIBillsList();
+        }
+
+        async function loadMyTSIBillsList() {
+            const summaryContainer = document.getElementById('mytsi-bills-summary');
+            const listContainer = document.getElementById('mytsi-bills-list');
+            
+            summaryContainer.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            listContainer.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            try {
+                const resp = await fetch(`${API_BASE}/mytsi/bills?` + new URLSearchParams({ init_data: tg.initData }));
+                if (resp.ok) {
+                    const data = await resp.json();
+                    
+                    // Summary
+                    summaryContainer.innerHTML = `
+                        <div class="mytsi-stat-card">
+                            <div class="mytsi-stat-icon">💰</div>
+                            <div class="mytsi-stat-content">
+                                <div class="mytsi-stat-label">${data.summary || 'Нет данных'}</div>
+                                <div class="mytsi-stat-sublabel">Всего счетов: ${data.bills?.length || 0}</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Bills list
+                    const bills = data.bills || [];
+                    if (bills.length === 0) {
+                        listContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Счетов нет</div></div>';
+                        return;
+                    }
+                    
+                    listContainer.innerHTML = bills.slice(-10).reverse().map(b => `
+                        <div class="bill-item">
+                            <div class="bill-status">${b.paid ? '✅' : '⏳'}</div>
+                            <div class="bill-content">
+                                <div class="bill-service">${(b.service || 'Платёж').substring(0, 40)}</div>
+                                <div class="bill-date">${b.date}${b.payment_date ? ' → ' + b.payment_date : ''}</div>
+                            </div>
+                            <div class="bill-amount ${b.paid ? 'paid' : 'unpaid'}">${Math.abs(b.amount).toFixed(2)} €</div>
+                        </div>
+                    `).join('');
+                } else {
+                    summaryContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">🔐</div><div class="empty-text">Войди для просмотра</div></div>';
+                    listContainer.innerHTML = '';
+                }
+            } catch (error) {
+                console.error('Bills load error:', error);
+                summaryContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">Ошибка загрузки</div></div>';
+                listContainer.innerHTML = '';
+            }
         }
 
         // Start loading data
