@@ -536,7 +536,7 @@ def delete_note(note_id):
     if not any(n['id'] == note_id for n in notes):
         return jsonify({'success': False, 'error': 'Заметка не найдена'}), 404
     
-    db.delete_note(note_id)
+    db.delete_note(note_id, telegram_id)
     
     logger.info(f"User {telegram_id} deleted note {note_id}")
     return jsonify({'success': True})
