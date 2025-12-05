@@ -2119,9 +2119,39 @@ _{comment}_
     
     def _extract_period(self, query: str) -> dict:
         """Extract time period from query text"""
+        from dateutil.relativedelta import relativedelta
         query = query.lower()
         now = datetime.now(self.tz)
         today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # Check for specific months
+        months = {
+            'январ': (1, 'на январь'), 'january': (1, 'на январь'),
+            'феврал': (2, 'на февраль'), 'february': (2, 'на февраль'),
+            'март': (3, 'на март'), 'march': (3, 'на март'),
+            'апрел': (4, 'на апрель'), 'april': (4, 'на апрель'),
+            'ма': (5, 'на май'), 'may': (5, 'на май'),
+            'июн': (6, 'на июнь'), 'june': (6, 'на июнь'),
+            'июл': (7, 'на июль'), 'july': (7, 'на июль'),
+            'август': (8, 'на август'), 'august': (8, 'на август'),
+            'сентябр': (9, 'на сентябрь'), 'september': (9, 'на сентябрь'),
+            'октябр': (10, 'на октябрь'), 'october': (10, 'на октябрь'),
+            'ноябр': (11, 'на ноябрь'), 'november': (11, 'на ноябрь'),
+            'декабр': (12, 'на декабрь'), 'december': (12, 'на декабрь'),
+        }
+        
+        for month_key, (month_num, label) in months.items():
+            if month_key in query:
+                # Determine year
+                year = now.year
+                if month_num < now.month or (month_num == now.month and 'следующ' in query):
+                    year += 1
+                elif 'следующ' in query and month_num > now.month:
+                    year = now.year  # next occurrence is this year
+                
+                start = datetime(year, month_num, 1, tzinfo=self.tz)
+                end = start + relativedelta(months=1) - timedelta(days=1)
+                return {'start': start, 'end': end, 'label': label}
         
         if any(w in query for w in ['сегодня', 'today']):
             return {'start': today, 'end': today + timedelta(days=1), 'label': 'на сегодня'}
