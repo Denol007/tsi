@@ -36,7 +36,7 @@ class ScheduleMonitor:
         self.bot = bot  # Telegram bot for sending notifications
         self._snapshots: Dict[str, ScheduleSnapshot] = {}
         self._running = False
-        self._check_interval = 300  # 5 minutes
+        self._check_interval = 120  # 2 minutes for faster notifications
     
     def _generate_event_id(self, event: Dict) -> str:
         """Generate unique ID for an event"""
@@ -92,6 +92,20 @@ class ScheduleMonitor:
         
         if prev_snapshot is None:
             # First time seeing this group - save snapshot
+            # BUT also report currently cancelled events for today/tomorrow as "newly cancelled"
+            # This ensures users get notified about already cancelled classes
+            today = datetime.now().strftime("%Y-%m-%d")
+            tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+            
+            for event_id in current_cancelled:
+                event = current_ids.get(event_id)
+                if event:
+                    event_date = event.get('date', '')
+                    # Only notify about today's and tomorrow's cancelled classes on first check
+                    if event_date in [today, tomorrow]:
+                        changes['newly_cancelled'].append(event)
+                        changes['changed'] = True
+            
             self._snapshots[group_code] = ScheduleSnapshot(
                 group_code=group_code,
                 events_hash=self._hash_events(current_events),
@@ -148,26 +162,45 @@ class ScheduleMonitor:
             logger.info(f"No users with group {group_code} to notify")
             return
         
+        day_names = {
+            0: "Понедельник", 1: "Вторник", 2: "Среда", 
+            3: "Четверг", 4: "Пятница", 5: "Суббота", 6: "Воскресенье"
+        }
+        
         # Prepare notification messages
         for event in changes.get('newly_cancelled', []):
             date_str = event.get('date', '')
             time_str = f"{event.get('start_time', '')} - {event.get('end_time', '')}"
             subject = event.get('title', 'Занятие')
             teacher = event.get('lecturer', '')
-            room = event.get('room', '')
+            
+            # Format date nicely
+            formatted_date = date_str
+            today = datetime.now().strftime("%Y-%m-%d")
+            tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+            
+            try:
+                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                day_name = day_names.get(date_obj.weekday(), "")
+                if date_str == today:
+                    formatted_date = f"Сегодня ({day_name})"
+                elif date_str == tomorrow:
+                    formatted_date = f"Завтра ({day_name})"
+                else:
+                    formatted_date = f"{date_obj.strftime('%d.%m.%Y')} ({day_name})"
+            except:
+                pass
             
             message = (
-                f"❌ **Пара отменена!**\n\n"
-                f"📅 {date_str}\n"
+                f"🚨 **ПАРА ОТМЕНЕНА!**\n\n"
+                f"📅 {formatted_date}\n"
                 f"🕐 {time_str}\n"
                 f"📚 {subject}\n"
             )
             if teacher:
                 message += f"👨‍🏫 {teacher}\n"
-            if room:
-                message += f"📍 {room}\n"
             
-            message += f"\n👥 Группа: {group_code}"
+            message += f"\n👥 Группа: **{group_code}**"
             
             # Send to all users
             for user in users:

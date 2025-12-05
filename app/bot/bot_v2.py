@@ -2575,9 +2575,9 @@ _Скажи "измени группу на XXXX" или "выключи уве�
             job_queue.run_repeating(self.check_reminders, interval=60, first=10)
             logger.info("Reminder checker started")
             
-            # Add schedule monitor job (check every 5 minutes)
-            job_queue.run_repeating(self.check_schedule_changes, interval=300, first=60)
-            logger.info("Schedule monitor started")
+            # Add schedule monitor job (check every 2 minutes for faster notifications)
+            job_queue.run_repeating(self.check_schedule_changes, interval=120, first=30)
+            logger.info("Schedule monitor started (every 2 minutes)")
         
         self.application.run_polling(allowed_updates=Update.ALL_TYPES)
     
