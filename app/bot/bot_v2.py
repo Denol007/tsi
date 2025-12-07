@@ -306,7 +306,8 @@ class SmartCampusBotV2:
         
         await update.message.reply_text(
             "🔐 **Авторизация в TSI**\n\n"
-            "Введи свой студенческий логин (например: `st12345`):\n\n"
+            "Введи свой студенческий логин:\n"
+            "📝 Примеры: `st12345`, `name.surname`\n\n"
             "⚠️ _Твои данные будут зашифрованы и храниться безопасно._\n"
             "_Отправь /cancel для отмены._",
             parse_mode="Markdown"
@@ -323,7 +324,8 @@ class SmartCampusBotV2:
         
         await query.edit_message_text(
             "🔐 **Авторизация в TSI**\n\n"
-            "Введи свой студенческий логин (например: `st12345`):\n\n"
+            "Введи свой студенческий логин:\n"
+            "📝 Примеры: `st12345`, `name.surname`\n\n"
             "⚠️ _Твои данные будут зашифрованы._\n"
             "_Отправь /cancel для отмены._",
             parse_mode="Markdown"
@@ -332,19 +334,19 @@ class SmartCampusBotV2:
     
     async def handle_username(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle username input"""
-        username = update.message.text.strip().lower()
+        username = update.message.text.strip()
         
-        # Validate username format
-        if not re.match(r'^st\d{5,6}$', username):
+        # Validate username format - accept various TSI formats
+        # Examples: st12345, Gercevs.I, name.surname, etc.
+        if len(username) < 3:
             await update.message.reply_text(
-                "❌ Неверный формат логина.\n"
-                "Логин должен быть в формате: `st12345`\n\n"
+                "❌ Логин слишком короткий.\n\n"
                 "Попробуй ещё раз или /cancel для отмены.",
                 parse_mode="Markdown"
             )
             return STATE_AWAITING_USERNAME
         
-        # Store username temporarily
+        # Store username (preserve case for non-st accounts)
         context.user_data["tsi_username"] = username
         
         # Delete the message with username for security
