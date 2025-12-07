@@ -71,28 +71,28 @@ class CalendarService:
             resp = self.session.post(self.AUTH_URL, files=login_data, headers=headers, allow_redirects=True)
             
             # Check if login was successful
-            # TSI redirects to calendar page on success, shows error message on failure
+            # TSI redirects to calendar page on success
             response_text = resp.text.lower()
             
-            # Check for error indicators
-            if any(error in response_text for error in ['invalid', 'incorrect', 'wrong', 'error', 'failed', 'neveiksmīgs', 'kļūda']):
-                logger.error("Login failed - invalid credentials")
-                return False
-            
-            # Check for success indicators
-            if "logout" not in response_text and "calendar" not in response_text and "atteikties" not in response_text:
-                logger.error("Login failed - no logout/calendar found in response")
-                return False
-            
-            # Verify we can access calendar page
+            # Primary check: verify we can access calendar page
             try:
                 cal_resp = self.session.get(self.CALENDAR_URL)
-                if cal_resp.status_code != 200:
-                    logger.error("Login failed - cannot access calendar")
-                    return False
-            except Exception:
-                logger.error("Login failed - calendar check failed")
+                if cal_resp.status_code == 200:
+                    cal_text = cal_resp.text.lower()
+                    # Check if we're actually logged in (logout button present)
+                    if "logout" in cal_text or "atteikties" in cal_text or "calendar" in cal_text:
+                        self._is_authenticated = True
+                        self.username = username
+                        self.password = password
+                        logger.info(f"Calendar login successful for {username}")
+                        return True
+            except Exception as e:
+                logger.error(f"Login failed - calendar check error: {e}")
                 return False
+            
+            # If we get here, login failed
+            logger.error("Login failed - invalid credentials or cannot access calendar")
+            return False
             
             self._is_authenticated = True
             self.username = username
