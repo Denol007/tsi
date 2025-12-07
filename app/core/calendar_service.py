@@ -71,8 +71,27 @@ class CalendarService:
             resp = self.session.post(self.AUTH_URL, files=login_data, headers=headers, allow_redirects=True)
             
             # Check if login was successful
-            if "logout" not in resp.text.lower():
-                logger.error("Login failed - check credentials")
+            # TSI redirects to calendar page on success, shows error message on failure
+            response_text = resp.text.lower()
+            
+            # Check for error indicators
+            if any(error in response_text for error in ['invalid', 'incorrect', 'wrong', 'error', 'failed', 'neveiksmīgs', 'kļūda']):
+                logger.error("Login failed - invalid credentials")
+                return False
+            
+            # Check for success indicators
+            if "logout" not in response_text and "calendar" not in response_text and "atteikties" not in response_text:
+                logger.error("Login failed - no logout/calendar found in response")
+                return False
+            
+            # Verify we can access calendar page
+            try:
+                cal_resp = self.session.get(self.CALENDAR_URL)
+                if cal_resp.status_code != 200:
+                    logger.error("Login failed - cannot access calendar")
+                    return False
+            except Exception:
+                logger.error("Login failed - calendar check failed")
                 return False
             
             self._is_authenticated = True

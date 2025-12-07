@@ -74,26 +74,41 @@ class MyTSIService:
                 allow_redirects=True
             )
             
-            # Check if login was successful
-            # After successful login, we should be redirected to dashboard
-            # or see logout link in the page
-            if "logout" in resp.text.lower() or "/dashboard" in resp.url or resp.url != self.LOGIN_URL:
-                self._is_authenticated = True
-                self.username = username
-                self.password = password
-                logger.info(f"MyTSI login successful for {username}")
-                return True
+            # Enhanced validation to prevent accepting wrong passwords
+            response_text = resp.text.lower()
             
-            # Check for error message
+            # Step 1: Check for error indicators in multiple languages
+            error_keywords = [
+                'invalid', 'incorrect', 'wrong', 'error', 'failed',  # English
+                'neveiksmīgs', 'kļūda', 'nepareiz', 'nav derīgs'  # Latvian
+            ]
+            if any(error in response_text for error in error_keywords):
+                logger.error("MyTSI login failed - error detected in response")
+                return False
+            
+            # Step 2: Check for success indicators
+            has_logout = "logout" in response_text
+            has_dashboard = "/dashboard" in resp.url or resp.url != self.LOGIN_URL
+            has_atteikties = "atteikties" in response_text  # Latvian for logout
+            
+            if not (has_logout or has_dashboard or has_atteikties):
+                logger.error("MyTSI login failed - no success indicators found")
+                return False
+            
+            # Step 3: Parse HTML for error messages
             from bs4 import BeautifulSoup
             soup = BeautifulSoup(resp.text, "html.parser")
             error = soup.find(class_="error")
             if error and error.get_text(strip=True):
                 logger.error(f"MyTSI login error: {error.get_text(strip=True)}")
-            else:
-                logger.error("MyTSI login failed - invalid credentials")
+                return False
             
-            return False
+            # All checks passed
+            self._is_authenticated = True
+            self.username = username
+            self.password = password
+            logger.info(f"MyTSI login successful for {username}")
+            return True
             
         except Exception as e:
             logger.error(f"MyTSI login error: {e}")
